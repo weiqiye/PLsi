@@ -392,42 +392,41 @@ function drawInstruction(svg,net,r,c,ox,oy){
     if(code===NC){
       svg.appendChild(svgEl('line',{x1:mx-5,y1:my+9,x2:mx+5,y2:my-9,stroke:col,'stroke-width':2}));
     }
-    // RE 上升沿：在触点中央画一个明显的向上箭头（三菱 P 型）
+    // RE 上升沿：触点中央画一个粗大的向上箭头（箭头朝顶部伸出）
     else if(code===RE){
-      // 箭头竖线
-      svg.appendChild(svgEl('line',{x1:mx,y1:my+7,x2:mx,y2:my-4,stroke:col,'stroke-width':2}));
-      // 箭头头部（实心三角）
-      const ap=`${mx-5},${my-3} ${mx+5},${my-3} ${mx},${my-11} Z`;
+      svg.appendChild(svgEl('line',{x1:mx,y1:my+6,x2:mx,y2:my-3,stroke:col,'stroke-width':3}));
+      const ap=`${mx-7},${my-3} ${mx+7},${my-3} ${mx},${my-13} Z`;
       svg.appendChild(svgEl('polygon',{points:ap,fill:col,stroke:col,'stroke-width':1}));
     }
-    // FE 下降沿：在触点中央画一个明显的向下箭头（三菱 N 型）
+    // FE 下降沿：触点中央画一个粗大的向下箭头（箭头朝底部伸出）
     else if(code===FE){
-      // 箭头竖线
-      svg.appendChild(svgEl('line',{x1:mx,y1:my-7,x2:mx,y2:my+4,stroke:col,'stroke-width':2}));
-      // 箭头头部（实心三角）
-      const ap=`${mx-5},${my+3} ${mx+5},${my+3} ${mx},${my+11} Z`;
+      svg.appendChild(svgEl('line',{x1:mx,y1:my-6,x2:mx,y2:my+3,stroke:col,'stroke-width':3}));
+      const ap=`${mx-7},${my+3} ${mx+7},${my+3} ${mx},${my+13} Z`;
       svg.appendChild(svgEl('polygon',{points:ap,fill:col,stroke:col,'stroke-width':1}));
     }
     // 元件地址标签（在触点上方）
     addText(svg,x0+2,y0+3,tag(),'#e6edf3',9,'monospace');
     return;
   }
-  if(code>=COIL && code<=COILU){ // 线圈（三菱风格：正圆）
+  if(code>=COIL && code<=COILU){ // 线圈（三菱风格：小括号 ( )）
     const val=dataAt(r,c);
     const col=val?ON:OFF;
     const lead=energized?ON:OFF;
+    const pr=10; // 括号高度半径
     // 左右引线
-    svg.appendChild(svgEl('line',{x1:x0,y1:my,x2:mx-12,y2:my,stroke:lead,'stroke-width':2}));
-    svg.appendChild(svgEl('line',{x1:mx+12,y1:my,x2:x0+CW,y2:my,stroke:lead,'stroke-width':2}));
-    // 正圆
-    svg.appendChild(svgEl('circle',{cx:mx,cy:my,r:12,fill:'#000',stroke:col,'stroke-width':2}));
-    // 线圈类型标识（L=置位, U=复位, C=普通不标）
+    svg.appendChild(svgEl('line',{x1:x0,y1:my,x2:mx-pr-1,y2:my,stroke:lead,'stroke-width':2}));
+    svg.appendChild(svgEl('line',{x1:mx+pr+1,y1:my,x2:x0+CW,y2:my,stroke:lead,'stroke-width':2}));
+    // 左括号 (
+    svg.appendChild(svgEl('path',{d:`M ${mx-pr} ${my-pr} Q ${mx-pr+6} ${my} ${mx-pr} ${my+pr}`,fill:'none',stroke:col,'stroke-width':2}));
+    // 右括号 )
+    svg.appendChild(svgEl('path',{d:`M ${mx+pr} ${my-pr} Q ${mx+pr-6} ${my} ${mx+pr} ${my+pr}`,fill:'none',stroke:col,'stroke-width':2}));
+    // 线圈类型标识（L=置位, U=复位, C=普通不标）放在括号中间
     if(code===COILL){
-      addText(svg,mx-3,my+3,'L',col,12,'monospace');
+      addText(svg,mx-3,my+3,'L',col,11,'monospace');
     } else if(code===COILU){
-      addText(svg,mx-3,my+3,'U',col,12,'monospace');
+      addText(svg,mx-3,my+3,'U',col,11,'monospace');
     }
-    // 元件地址标签（在圆内居中）
+    // 元件地址标签（在括号上方）
     addText(svg,x0+2,y0+3,tag(),'#e6edf3',9,'monospace');
     return;
   }
