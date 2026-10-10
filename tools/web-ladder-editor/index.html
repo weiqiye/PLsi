@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PLsi Web Ladder Editor</title>
+<style>
+  :root{
+    --bg:#0a0d12; --panel:#121821; --panel2:#1a2230; --line:#2a3442;
+    --txt:#e6edf3; --dim:#8b98a5; --green:#22c55e; --grey:#6b7280;
+    --orange:#f97316; --cyan:#22d3ee; --red:#ef4444; --yellow:#eab308;
+    --rail:#3b82f6; --sel:#1f6feb;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:13px;display:flex;flex-direction:column;overflow:hidden}
+  header{background:linear-gradient(180deg,#0f1620,#0a0d12);border-bottom:1px solid var(--line);padding:8px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  header .logo{font-weight:700;font-size:15px;color:var(--cyan);letter-spacing:.5px}
+  header .logo span{color:var(--orange)}
+  header input[type=text]{background:#0d141d;border:1px solid var(--line);color:var(--txt);padding:5px 8px;border-radius:5px;font-size:12px;width:180px}
+  .toolbar{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+  button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);padding:5px 9px;border-radius:5px;cursor:pointer;font-size:12px;white-space:nowrap}
+  button:hover{border-color:#3a4658;background:#222d3d}
+  button:active{transform:translateY(1px)}
+  button.primary{background:#1d3a5f;border-color:#2a5586}
+  button.primary:hover{background:#234a78}
+  button.danger{background:#3a1d1d;border-color:#5a2828;color:#fca5a5}
+  button.toggle.on{background:#1d3a2a;border-color:#2a5a3a;color:var(--green)}
+  .sep{width:1px;height:22px;background:var(--line);margin:0 4px}
+  .nav{display:flex;align-items:center;gap:4px}
+  .netlabel{color:var(--dim);font-size:12px}
+  #main{flex:1;display:grid;grid-template-columns:1fr 320px;grid-template-rows:1fr auto;overflow:hidden}
+  #canvasWrap{grid-row:1/2;grid-column:1;overflow:auto;background:#06090d;padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+  #netSvg{background:#000;border:1px solid var(--line);border-radius:6px;flex:0 0 auto}
+  #paletteWrap{grid-row:1/2;grid-column:2;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+  .pheader{padding:8px 10px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+  .pheader h3{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+  #paletteTabs{display:flex;border-bottom:1px solid var(--line)}
+  #paletteTabs button{flex:1;border:none;border-radius:0;background:transparent;color:var(--dim);padding:7px;font-size:12px}
+  #paletteTabs button.active{background:var(--panel2);color:var(--cyan);border-bottom:2px solid var(--cyan)}
+  #palette{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;padding:8px;overflow:auto;flex:1}
+  .ibtn{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:10px 6px;text-align:center;cursor:pointer;font-size:12px;font-weight:600;color:var(--txt);min-height:46px;display:flex;align-items:center;justify-content:center}
+  .ibtn:hover{border-color:#3a4658;background:#222d3d}
+  .ibtn.sel{border-color:var(--green);background:#16291f;color:var(--green);box-shadow:0 0 0 1px var(--green) inset}
+  .ibtn.bar{border-style:dashed}
+  .elements{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;padding:8px}
+  .ebtn{background:#1b2230;border:1px solid var(--line);border-radius:6px;padding:8px 4px;text-align:center;cursor:pointer;font-size:11px;color:var(--txt)}
+  .ebtn.col{background:#2a2118;border-color:#4a3a28}
+  .ebtn.row{background:#23182a;border-color:#3a2848}
+  .ebtn.net{background:#212a18;border-color:#384a28}
+  .ebtn:hover{filter:brightness(1.2)}
+  .seltag{position:absolute;pointer-events:none}
+  #editPanel{position:fixed;top:80px;right:20px;width:340px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.6);z-index:50;display:none;max-height:80vh;overflow:auto}
+  #editPanel.show{display:block}
+  .ep-head{padding:9px 12px;background:var(--panel2);border-radius:8px 8px 0 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-weight:600}
+  .ep-body{padding:12px}
+  .ep-row{margin-bottom:10px}
+  .ep-row label{display:block;font-size:11px;color:var(--dim);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+  .ep-row .val{font-size:18px;color:var(--cyan);font-family:ui-monospace,monospace}
+  .types{display:flex;flex-wrap:wrap;gap:5px}
+  .types button{padding:6px 10px;font-size:13px;min-width:42px}
+  .types button.on{background:#1d3a5f;border-color:#2a5586;color:var(--cyan)}
+  .numinput{display:flex;gap:6px;align-items:center}
+  .numinput input{flex:1;background:#0d141d;border:1px solid var(--line);color:var(--cyan);padding:6px;border-radius:5px;font-family:ui-monospace,monospace;font-size:14px}
+  footer{grid-row:2/3;grid-column:1/3;background:var(--panel);border-top:1px solid var(--line);padding:6px 12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--dim);overflow:auto;max-height:120px}
+  #ioPanel{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+  .io-group{display:flex;align-items:center;gap:4px}
+  .io-group .ttl{color:var(--dim);font-size:10px;margin-right:3px}
+  .led{width:14px;height:14px;border-radius:3px;border:1px solid #333;background:#1a1a1a;cursor:pointer;display:inline-block}
+  .led.on{background:var(--green);box-shadow:0 0 5px var(--green)}
+  .led.out{background:#3a1a1a}
+  .led.out.on{background:var(--red);box-shadow:0 0 5px var(--red)}
+  .vfield{display:flex;align-items:center;gap:3px}
+  .vfield input{width:48px;background:#0d141d;border:1px solid var(--line);color:var(--cyan);padding:2px 4px;border-radius:3px;font-family:ui-monospace,monospace;font-size:11px}
+  #statusBar{position:fixed;bottom:0;left:0;right:0;background:#000;border-top:1px solid var(--line);padding:3px 12px;font-size:11px;color:var(--dim);z-index:40;display:flex;justify-content:space-between;pointer-events:none}
+  .badge{padding:1px 7px;border-radius:9px;font-size:10px;font-weight:600}
+  .badge.run{background:#16291f;color:var(--green)}
+  .badge.stop{background:#2a2118;color:var(--orange)}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;z-index:100;align-items:center;justify-content:center}
+  .modal-bg.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;max-width:560px;width:90%;max-height:80vh;overflow:auto}
+  .modal h3{margin-bottom:10px;color:var(--cyan)}
+  .modal textarea{width:100%;height:240px;background:#0d141d;border:1px solid var(--line);color:#a8d5ff;font-family:ui-monospace,monospace;font-size:11px;padding:8px;border-radius:5px}
+  .modal .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+  .hint{color:var(--dim);font-size:11px;line-height:1.5}
+  select{background:#0d141d;border:1px solid var(--line);color:var(--txt);padding:4px;border-radius:4px;font-size:12px}
+  @media(max-width:900px){#main{grid-template-columns:1fr;grid-template-rows:auto auto auto}#paletteWrap{grid-column:1;grid-row:3;border-left:none;border-top:1px solid var(--line);max-height:260px}#editPanel{right:6px;width:300px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">PLsi <span>Ladder</span> Web Editor</div>
+  <input type="text" id="progName" value="PROGRAM_1" title="程序名称">
+  <div class="sep"></div>
+  <div class="toolbar">
+    <button id="btnNew" title="新建空程序">新建</button>
+    <button id="btnDemo" title="加载示例程序">示例</button>
+    <button id="btnImport" title="导入 .plsi 或 .json">导入</button>
+    <div class="sep"></div>
+    <button id="btnExportBin" class="primary" title="导出固件可加载的 .plsi 二进制">导出 .plsi</button>
+    <button id="btnExportJson" title="导出 JSON">导出 JSON</button>
+    <button id="btnListing" title="生成助记符程序清单">程序清单</button>
+    <div class="sep"></div>
+    <button id="btnRun" class="toggle" title="运行/停止 模拟扫描">▶ 运行</button>
+    <button id="btnStep" title="单步扫描一次">单步</button>
+  </div>
+  <div class="sep"></div>
+  <div class="nav">
+    <button id="btnPrevNet">◀ 上</button>
+    <span class="netlabel">网络 <b id="netNum">0</b>/<b id="netTotal">400</b></span>
+    <button id="btnNextNet">下 ▶</button>
+    <button id="btnAddNet" title="在当前网络后插入空网络">+网络</button>
+    <button id="btnDelNet" class="danger" title="删除当前网络">删网络</button>
+  </div>
+</header>
+
+<div id="main">
+  <div id="canvasWrap">
+    <svg id="netSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+  <div id="paletteWrap">
+    <div class="pheader"><h3>指令面板</h3><span class="hint" id="selCellLbl">未选择</span></div>
+    <div id="paletteTabs"></div>
+    <div id="palette"></div>
+    <div class="pheader" style="border-top:1px solid var(--line)"><h3>元素操作</h3></div>
+    <div class="elements" id="elementsMenu"></div>
+  </div>
+  <footer>
+    <div id="ioPanel"></div>
+  </footer>
+</div>
+
+<div id="editPanel"></div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal" id="modalBox"></div>
+</div>
+
+<input type="file" id="fileInput" accept=".plsi,.json" style="display:none">
+
+<div id="statusBar">
+  <span id="statLeft">就绪 — 在网格上选择单元格，从面板放置指令</span>
+  <span id="statRight"><span class="badge stop" id="stateBadge">STOP</span> <span id="scanInfo"></span></span>
+</div>
+
+<script>
+/* =====================================================================
+   PLsi Web Ladder Editor — 与固件数据模型完全一致
+   Network = Cell[5][6] + Bars[5]; Cell = {Code(u16), Data(i16), Type(u16)}
+   程序 = Network[400]，以小端序原始二进制存储为 .plsi 文件
+   ===================================================================== */
+
+// ---------- 常量（镜像 PLsi.h / globals.h / hmi.h）----------
+const NET_ROWS=5, NET_COLUMNS=6, TOTAL_NETWORKS=400;
+const CELL_USED_MASK=0xF000, CELL_CODE_MASK=0x0FFF, BAR_MNEMONIC_CODE=99;
+
+// 数据类型代码
+const TypeM=0,TypeQ=1,TypeI=2,TypeCd=3,TypeCr=4,TypeTd=5,TypeTr=6,TypeIW=7,TypeQW=8,TypeC=9,TypeT=10,TypeD=11,TypeK=12,TypeR=13,TypeKR=14;
+
+// 指令助记符
+const MNEMONIC_CODES=["","CON","INV","NO","NC","RE","FE","C","L","U","TON","TOFF","TP","CTU","CTD","MOVE","SUB","ADD","MUL","DIV","MOD","SHL","SHR","ROL","ROR","AND","OR","XOR","NOT","EQ","GT","GE","LT","LE","NE"];
+// 数据类型助记符
+const MNEMONIC_TYPES=["M","Q","I","Cd","Cr","Td","Tr","IW","QW","C","T","D","K","R"];
+// 指令尺寸 [高, 宽]（镜像 hmi.h instructionHeight/Width）
+const INSTR_H=[1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,3,3,3,3,3,2,2,2,2,3,3,3,2,2,2,2,2,2,2];
+const INSTR_W=[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1];
+const FIRST_INVALID_CODE=35;
+
+// 指令代码常量
+const NOPP=0,CONN=1,NEG=2,NO=3,NC=4,RE=5,FE=6,COIL=7,COILL=8,COILU=9;
+const TON=10,TOFF=11,TP=12,CTU=13,CTD=14,MOVE=15,SUB=16,ADD=17,MUL=18,DIV=19,MOD=20;
+const SHL=21,SHR=22,ROL=23,ROR=24,AND=25,OR=26,XOR=27,NOT=28;
+const EQ=29,GT=30,GE=31,LT=32,LE=33,NE=34;
+
+// 调色板 3 页（镜像 hmi.h menuInstructions）
+const MENU_INSTRUCTIONS=[
+  [NO,NC,RE,FE,BAR_MNEMONIC_CODE,COIL,COILL,COILU,NEG,CONN,TON,TOFF,TP,CTU,CTD],
+  [SUB,ADD,MUL,DIV,MOVE,AND,OR,XOR,NOT,NOPP,MOD,SHL,SHR,ROL,ROR],
+  [EQ,GT,GE,LT,LE,NE,NOPP,NOPP,NOPP,NOPP,NOPP,NOPP,NOPP,NOPP,NOPP]
+];
+const ELEMENT_LIST=["COLUMN","ROW","NETWORK"];
+const ELEMENT_FUNC=["COPY","PASTE","INSERT","DELETE"];
+
+// FlagsMask（镜像 globals.cpp）
+const FlagsMask=[0x0001,0x0002,0x0004,0x0008,0x0010];
+const FlagsMaskAnd=[0xFFFE,0xFFFD,0xFFFB,0xFFF7,0xFFEF];
+
+// 定时器时基（镜像 hmi.h）
+const TIMER_BASE_TIME=[1,10,100,1000,60000];
+const TIMER_BASE_TEXT=["ms","0.01s","0.1s","s","min"];
+
+// 内存区容量（镜像 PLsi.h）
+const QTY={M:2000,I:200,Q:200,IW:50,QW:50,C:200,T:300,D:10000,R:2000};
+
+// 16 位指令可选数据类型（镜像 menuDataTypes）
+const MENU_DATA_TYPES=[TypeD,TypeT,TypeC,TypeIW,TypeK,TypeQW];
+// 布尔指令可选数据类型
+const BOOL_TYPES=[TypeI,TypeM,TypeQ,TypeTd,TypeTr,TypeCd,TypeCr];
+
+// ---------- 网格几何 ----------
+const CW=62, RH=46, RAIL=7, PAD=10;
+const NET_W=RAIL+NET_COLUMNS*CW, NET_H=NET_ROWS*RH;
+
+// ---------- 程序状态 ----------
+let program=[];              // Network[400]
+let curNet=0;                // 当前显示的网络索引
+let selR=-1, selC=-1;        // 当前选中的单元格
+let palettePage=0;           // 调色板页
+let selectedInstrCode=null;  // 调色板选中的指令
+let clipboard={type:null,data:null}; // 剪贴板：column/row/network
+let running=false, stepReq=false;
+let scanTimer=null;
+let curPaletteTab=0;         // 0..2 指令, 3=列,4=行,5=网络
+
+// ---------- 内存区（模拟器）----------
+const mem={};
+function initMem(){
+  mem.M=new Uint8Array(QTY.M); mem.Mh=new Uint8Array(QTY.M);
+  mem.I=new Uint8Array(QTY.I); mem.Ih=new Uint8Array(QTY.I);
+  mem.Q=new Uint8Array(QTY.Q); mem.Qh=new Uint8Array(QTY.Q);
+  mem.Cr=new Uint8Array(QTY.C); mem.Crh=new Uint8Array(QTY.C);
+  mem.Cd=new Uint8Array(QTY.C); mem.Cdh=new Uint8Array(QTY.C);
+  mem.Tr=new Uint8Array(QTY.T); mem.Trh=new Uint8Array(QTY.T);
+  mem.Td=new Uint8Array(QTY.T); mem.Tdh=new Uint8Array(QTY.T);
+  mem.IW=new Uint16Array(QTY.IW); mem.QW=new Uint16Array(QTY.QW);
+  mem.C=new Uint16Array(QTY.C); mem.D=new Int16Array(QTY.D);
+  mem.Timers=[]; for(let i=0;i<QTY.T;i++) mem.Timers.push({timeStamp:0,acc:0});
+}
+
+// ---------- 网络工厂 ----------
+function emptyCell(){return {Code:0,Data:0,Type:0};}
+function emptyNetwork(){
+  const n={Cells:[],Bars:[0,0,0,0,0]};
+  for(let r=0;r<NET_ROWS;r++){n.Cells.push([]);for(let c=0;c<NET_COLUMNS;c++) n.Cells[r].push(emptyCell());}
+  return n;
+}
+function emptyProgram(){
+  program=[];for(let i=0;i<TOTAL_NETWORKS;i++) program.push(emptyNetwork());
+}
+function cloneCell(c){return {Code:c.Code,Data:c.Data,Type:c.Type};}
+function cloneNetwork(n){
+  const m=emptyNetwork();
+  for(let r=0;r<NET_ROWS;r++)for(let c=0;c<NET_COLUMNS;c++) m.Cells[r][c]=cloneCell(n.Cells[r][c]);
+  for(let i=0;i<NET_COLUMNS-1;i++) m.Bars[i]=n.Bars[i];
+  return m;
+}
+function networkIsEmpty(n){
+  for(let r=0;r<NET_ROWS;r++)for(let c=0;c<NET_COLUMNS;c++) if(n.Cells[r][c].Code!==0) return false;
+  for(let c=0;c<NET_COLUMNS-1;c++) if(n.Bars[c]!==0) return false;
+  return true;
+}
+
+// ---------- 地址范围（镜像 hmiLadderEdition.cpp）----------
+function getMaxAddr(t){
+  const m={0:QTY.M-1,1:QTY.Q-1,2:QTY.I-1,3:QTY.C-1,4:QTY.C-1,5:QTY.T-1,6:QTY.T-1,
+    7:QTY.IW-1,8:QTY.QW-1,9:QTY.C-1,10:QTY.T-1,11:QTY.D-1,12:32768,13:QTY.R-1,14:0};
+  return m[t]??0;
+}
+function getMinAddr(t){return t===TypeK?-32767:0;}
+function clampAddr(cell){
+  const mx=getMaxAddr(cell.Type), mn=getMinAddr(cell.Type);
+  if(cell.Data>mx) cell.Data=mx;
+  if(cell.Data<mn) cell.Data=mn;
+}
+
+// =====================================================================
+//  渲染：把当前网络画成 SVG（镜像 drawNetwork.cpp）
+// =====================================================================
+const SVGNS="http://www.w3.org/2000/svg";
+function svgEl(name,attrs){const e=document.createElementNS(SVGNS,name);for(const k in attrs) e.setAttribute(k,attrs[k]);return e;}
+let netFlagsOnline=[0,0,0,0,0]; // 当前网络在线标志（用于上色）
+
+function render(){
+  const svg=document.getElementById('netSvg');
+  svg.setAttribute('width',NET_W+PAD*2);
+  svg.setAttribute('height',NET_H+PAD*2+22);
+  svg.setAttribute('viewBox',`0 0 ${NET_W+PAD*2} ${NET_H+PAD*2+22}`);
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+
+  const ox=PAD, oy=PAD;
+
+  // 背景
+  svg.appendChild(svgEl('rect',{x:ox,y:oy,width:NET_W,height:NET_H,fill:'#000'}));
+
+  // 网格线
+  for(let r=0;r<=NET_ROWS;r++){
+    svg.appendChild(svgEl('line',{x1:ox+RAIL,y1:oy+r*RH,x2:ox+NET_W,y2:oy+r*RH,stroke:'#1a2230','stroke-width':1}));
+  }
+  for(let c=0;c<=NET_COLUMNS;c++){
+    svg.appendChild(svgEl('line',{x1:ox+RAIL+c*CW,y1:oy,x2:ox+RAIL+c*CW,y2:oy+NET_H,stroke:'#1a2230','stroke-width':1}));
+  }
+
+  // 左母线（电源轨）
+  const railColor = running? '#22c55e' : '#3b4252';
+  svg.appendChild(svgEl('rect',{x:ox,y:oy,width:RAIL,height:NET_H,fill:railColor}));
+
+  // 单元格符号
+  const net=program[curNet];
+  for(let c=0;c<NET_COLUMNS;c++){
+    for(let r=0;r<NET_ROWS;r++){
+      let code=net.Cells[r][c].Code;
+      if(code===0) continue;
+      // 被多格指令占用的子格不重复画
+      if((code & CELL_USED_MASK) && ((code & CELL_CODE_MASK)!==0)){
+        // 这是某指令的后续格子，标记
+        continue;
+      }
+      drawInstruction(svg,net,r,c,ox,oy);
+    }
+  }
+
+  // 垂直连接条
+  for(let c=0;c<NET_COLUMNS-1;c++){
+    for(let r=0;r<NET_ROWS-1;r++){
+      if(net.Bars[c] & FlagsMask[r]){
+        const energized = (netFlagsOnline[c] & FlagsMask[r]) && running;
+        const col = energized? '#22c55e':'#6b7280';
+        const x=ox+RAIL+(c+1)*CW-2;
+        const y1=oy+r*RH+RH/2, y2=oy+(r+1)*RH+RH/2;
+        svg.appendChild(svgEl('line',{x1:x,y1:y1,x2:x,y2:y2,stroke:col,'stroke-width':3}));
+      }
+    }
+  }
+
+  // 选中框
+  if(selR>=0 && selC>=0){
+    svg.appendChild(svgEl('rect',{x:ox+RAIL+selC*CW+1,y:oy+selR*RH+1,width:CW-2,height:RH-2,fill:'none',stroke:'#1f6feb','stroke-width':2,'stroke-dasharray':'4 2'}));
+  }
+
+  // 网络号标签
+  const t=svgEl('text',{x:ox,y:oy+NET_H+16,fill:'#8b98a5','font-size':11,'font-family':'monospace'});
+  t.textContent=`网络 ${curNet}  —  ${networkIsEmpty(net)?'(空)':'非空'}`;
+  svg.appendChild(t);
+
+  // 网络号输入区点击层（用于选中单元格）
+  const hit=svgEl('rect',{x:ox+RAIL,y:oy,width:NET_W-RAIL,height:NET_H,fill:'transparent',cursor:'pointer'});
+  hit.addEventListener('click',onGridClick);
+  svg.appendChild(hit);
+}
+
+// 取该格的标志（输入电源）
+function flagAt(r,c){
+  if(c===0) return running?1:0;
+  return (netFlagsOnline[c-1] & FlagsMask[r])?1:0;
+}
+// 取该格数据值（在线显示）
+function dataAt(r,c){
+  return getDataValue(program[curNet],r,c);
+}
+
+function drawInstruction(svg,net,r,c,ox,oy){
+  const cell=net.Cells[r][c];
+  const code=cell.Code & CELL_CODE_MASK;
+  const x0=ox+RAIL+c*CW, y0=oy+r*RH;
+  const mx=x0+CW/2, my=y0+RH/2;
+  const energized=flagAt(r,c);
+  const ON='#22c55e', OFF='#9ca3af';
+
+  // 标签（位元件）
+  function tag(){return MNEMONIC_TYPES[cell.Type]+cell.Data;}
+
+  if(code===CONN){ // 水平连接
+    const col=energized?ON:OFF;
+    svg.appendChild(svgEl('line',{x1:x0,y1:my,x2:x0+CW,y2:my,stroke:col,'stroke-width':2}));
+    return;
+  }
+  if(code===NEG){ // 取反
+    const col=energized?ON:OFF;
+    svg.appendChild(svgEl('line',{x1:x0,y1:my,x2:mx-5,y2:my,stroke:col,'stroke-width':2}));
+    svg.appendChild(svgEl('line',{x1:mx+5,y1:my,x2:x0+CW,y2:my,stroke:OFF,'stroke-width':2}));
+    // 斜线（非）
+    svg.appendChild(svgEl('line',{x1:mx-5,y1:my+6,x2:mx+5,y2:my-6,stroke:col,'stroke-width':2}));
+    return;
+  }
+  if(code>=NO && code<=FE){ // 触点 NO/NC/RE/FE
+    const val=dataAt(r,c);
+    let contactOn;
+    if(code===NO) contactOn=energized && val;
+    else if(code===NC) contactOn=energized && !val;
+    else if(code===RE) contactOn=energized && val && !getPrevValue(net,r,c);
+    else if(code===FE) contactOn=energized && !val && getPrevValue(net,r,c);
+    const col=contactOn?ON:OFF;
+    // 引线
+    svg.appendChild(svgEl('line',{x1:x0,y1:my,x2:mx-7,y2:my,stroke:col,'stroke-width':2}));
+    svg.appendChild(svgEl('line',{x1:mx+7,y1:my,x2:x0+CW,y2:my,stroke:col,'stroke-width':2}));
+    // 两条竖线（触点）
+    svg.appendChild(svgEl('line',{x1:mx-4,y1:my-9,x2:mx-4,y2:my+9,stroke:col,'stroke-width':2}));
+    svg.appendChild(svgEl('line',{x1:mx+4,y1:my-9,x2:mx+4,y2:my+9,stroke:col,'stroke-width':2}));
+    if(code===NC){
+      svg.appendChild(svgEl('line',{x1:mx-4,y1:my+9,x2:mx+4,y2:my-9,stroke:col,'stroke-width':2}));
+    } else if(code===RE){
+      const p=`${mx-4},${my-3} ${mx+4},${my-3} ${mx},${my-10} Z`;
+      svg.appendChild(svgEl('polygon',{points:p,fill:col}));
+    } else if(code===FE){
+      const p=`${mx-4},${my+3} ${mx+4},${my+3} ${mx},${my+10} Z`;
+      svg.appendChild(svgEl('polygon',{points:p,fill:col}));
+    }
+    // 标签
+    addText(svg,x0+2,y0+3,tag(),'#e6edf3',9,'monospace');
+    return;
+  }
+  if(code>=COIL && code<=COILU){ // 线圈
+    const val=dataAt(r,c);
+    const col=val?ON:OFF;
+    const lead=energized?ON:OFF;
+    svg.appendChild(svgEl('line',{x1:x0,y1:my,x2:mx-9,y2:my,stroke:lead,'stroke-width':2}));
+    svg.appendChild(svgEl('line',{x1:mx+9,y1:my,x2:x0+CW,y2:my,stroke:lead,'stroke-width':2}));
+    svg.appendChild(svgEl('ellipse',{cx:mx,cy:my,rx:9,ry:9,fill:'none',stroke:col,'stroke-width':2}));
+    if(code===COILL) addText(svg,mx-3,my+4,'L',col,11,'monospace');
+    if(code===COILU) addText(svg,mx-3,my+4,'U',col,11,'monospace');
+    addText(svg,x0+2,y0+3,tag(),'#e6edf3',9,'monospace');
+    return;
+  }
+  // 盒型指令（定时器/计数器/数学/比较/位移/MOVE/NOT）
+  drawBoxInstruction(svg,net,r,c,ox,oy,code);
+}
+
+function addText(svg,x,y,txt,fill,size,family){
+  const t=svgEl('text',{x,y,fill,'font-size':size,'font-family':family||'monospace'});
+  t.textContent=txt; svg.appendChild(t); return t;
+}
+
+function drawBoxInstruction(svg,net,r,c,ox,oy,code){
+  const h=INSTR_H[code];
+  const x0=ox+RAIL+c*CW, y0=oy+r*RH;
+  const boxW=CW-6, boxH=h*RH-4;
+  const bx=x0+3, by=y0+2;
+  const ON='#22c55e', OFF='#9ca3af';
+  const energized=flagAt(r,c);
+  const col=energized?ON:OFF;
+  const out1=(netFlagsOnline[c] & FlagsMask[r])?ON:OFF;
+
+  // 盒子
+  svg.appendChild(svgEl('rect',{x:bx,y:by,width:boxW,height:boxH,rx:4,fill:'#0b1018',stroke:col,'stroke-width':1.5}));
+  // 标题（助记符）
+  addText(svg,bx+4,by+11,MNEMONIC_CODES[code],col,10,'monospace');
+  // 输入/输出引线
+  svg.appendChild(svgEl('line',{x1:x0,y1:oy+r*RH+RH/2,x2:bx,y2:oy+r*RH+RH/2,stroke:col,'stroke-width':2}));
+  svg.appendChild(svgEl('line',{x1:bx+boxW,y1:oy+r*RH+RH/2,x2:x0+CW,y2:oy+r*RH+RH/2,stroke:out1,'stroke-width':2}));
+
+  if(code>=TON && code<=TP){
+    // 定时器：Tn / SET 基时 设定值 / ACC 累计值
+    const cell=net.Cells[r][c], param=net.Cells[r+1][c];
+    const baseIdx=TIMER_BASE_TIME.indexOf(param.Type);
+    addText(svg,bx+boxW/2-12,by+boxH/2-8,`T${cell.Data}`,'#e6edf3',11,'monospace');
+    addText(svg,bx+2,by+boxH/2+4,`SET ${TIMER_BASE_TEXT[baseIdx>=0?baseIdx:0]} ${param.Data}`,'#8b98a5',8,'monospace');
+    const acc=mem.Timers[cell.Data]?mem.Timers[cell.Data].acc:0;
+    addText(svg,bx+2,by+boxH-3,`ACC ${acc}`,'#22d3ee',8,'monospace');
+    return;
+  }
+  if(code===CTU||code===CTD){
+    const cell=net.Cells[r][c], param=net.Cells[r+1][c];
+    addText(svg,bx+boxW/2-10,by+boxH/2-8,`C${cell.Data}`,'#e6edf3',11,'monospace');
+    addText(svg,bx+2,by+boxH/2+4,`SET ${param.Data}`,'#8b98a5',8,'monospace');
+    addText(svg,bx+2,by+boxH-3,`ACC ${mem.C[cell.Data]||0}`,'#22d3ee',8,'monospace');
+    return;
+  }
+  if(code===MOVE){
+    const a=net.Cells[r][c], b=net.Cells[r+1][c];
+    addText(svg,bx+2,by+boxH/2-3,`${MNEMONIC_TYPES[a.Type]}${a.Data}`,'#e6edf3',8,'monospace');
+    addText(svg,bx+2,by+boxH-4,`→ ${MNEMONIC_TYPES[b.Type]}${b.Data}`,'#8b98a5',8,'monospace');
+    addText(svg,bx+boxW-22,by+boxH/2-3,`${dataAt(r,c)}`,'#22d3ee',8,'monospace');
+    return;
+  }
+  if(code>=SHL && code<=ROR || code===NOT){
+    // 2 格：输入 -> 输出
+    const a=net.Cells[r][c], b=net.Cells[r+1][c];
+    addText(svg,bx+2,by+boxH/2-3,`${MNEMONIC_TYPES[a.Type]}${a.Data}`,'#e6edf3',8,'monospace');
+    addText(svg,bx+2,by+boxH-4,`→ ${MNEMONIC_TYPES[b.Type]}${b.Data}`,'#8b98a5',8,'monospace');
+    addText(svg,bx+boxW-22,by+boxH-4,`${dataAt(r,c)}`,'#22d3ee',8,'monospace');
+    return;
+  }
+  if(code>=EQ && code<=NE){
+    // 比较：两操作数
+    const a=net.Cells[r][c], b=net.Cells[r+1][c];
+    addText(svg,bx+2,by+boxH/2-3,`${MNEMONIC_TYPES[a.Type]}${a.Data}`,'#e6edf3',8,'monospace');
+    addText(svg,bx+2,by+boxH-4,`${MNEMONIC_TYPES[b.Type]}${b.Data}`,'#8b98a5',8,'monospace');
+    return;
+  }
+  // 3 格数学：a op b -> out
+  const a=net.Cells[r][c], b=net.Cells[r+1][c], d=net.Cells[r+2][c];
+  addText(svg,bx+2,by+11,`${MNEMONIC_TYPES[a.Type]}${a.Data}`,'#e6edf3',8,'monospace');
+  addText(svg,bx+2,by+boxH/2,`${MNEMONIC_TYPES[b.Type]}${b.Data}`,'#8b98a5',8,'monospace');
+  addText(svg,bx+2,by+boxH-3,`→ ${MNEMONIC_TYPES[d.Type]}${d.Data}`,'#8b98a5',8,'monospace');
+}
+
+// =====================================================================
+//  数据读写（镜像 ladderInstructions.cpp GetDataValue/SetDataValue）
+// =====================================================================
+function getDataValue(net,r,c){
+  const cell=net.Cells[r][c];
+  switch(cell.Type){
+    case TypeM:return mem.M[cell.Data];
+    case TypeQ:return mem.Q[cell.Data];
+    case TypeI:return mem.I[cell.Data];
+    case TypeCd:return mem.Cd[cell.Data];
+    case TypeCr:return mem.Cr[cell.Data];
+    case TypeTd:return mem.Td[cell.Data];
+    case TypeTr:return mem.Tr[cell.Data];
+    case TypeIW:return mem.IW[cell.Data];
+    case TypeQW:return mem.QW[cell.Data];
+    case TypeC:return mem.C[cell.Data];
+    case TypeD:return mem.D[cell.Data];
+    case TypeT:return mem.Timers[cell.Data].acc;
+    case TypeK:return cell.Data;
+  }
+  return 0;
+}
+function setDataValue(net,r,c,v){
+  const cell=net.Cells[r][c];
+  v=v|0;
+  switch(cell.Type){
+    case TypeM:mem.M[cell.Data]=v&1?1:0;break;
+    case TypeQ:mem.Q[cell.Data]=v?1:0;break;
+    case TypeI:mem.I[cell.Data]=v?1:0;break;
+    case TypeCd:mem.Cd[cell.Data]=v?1:0;break;
+    case TypeCr:mem.Cr[cell.Data]=v?1:0;break;
+    case TypeTd:mem.Td[cell.Data]=v?1:0;break;
+    case TypeTr:mem.Tr[cell.Data]=v?1:0;break;
+    case TypeIW:mem.IW[cell.Data]=v;break;
+    case TypeQW:mem.QW[cell.Data]=v;break;
+    case TypeC:mem.C[cell.Data]=v;break;
+    case TypeD:mem.D[cell.Data]=v;break;
+    case TypeT:mem.Timers[cell.Data].acc=v;break;
+  }
+}
+function getPrevValue(net,r,c){
+  const cell=net.Cells[r][c];
+  switch(cell.Type){
+    case TypeM:return mem.Mh[cell.Data];
+    case TypeQ:return mem.Qh[cell.Data];
+    case TypeI:return mem.Ih[cell.Data];
+    case TypeCd:return mem.Cdh[cell.Data];
+    case TypeCr:return mem.Crh[cell.Data];
+    case TypeTd:return mem.Tdh[cell.Data];
+    case TypeTr:return mem.Trh[cell.Data];
+  }
+  return 0;
+}
+
+// =====================================================================
+//  扫描引擎（移植 execScanPLC + 各指令执行）
+// =====================================================================
+function scanAll(){
+  const flags=new Uint16Array(NET_COLUMNS-1);
+  const now=performance.now();
+  for(let n=0;n<TOTAL_NETWORKS;n++){
+    const net=program[n];
+    if(networkIsEmpty(net)) continue; // 跳过空网络以加速
+    flags.fill(0);
+    for(let c=0;c<NET_COLUMNS;c++){
+      for(let r=0;r<NET_ROWS;r++){
+        const cell=net.Cells[r][c];
+        if(cell.Code===0) continue;
+        if(cell.Code & CELL_USED_MASK){
+          // 子格跳过（除非 code 部分非 0）
+          if((cell.Code & CELL_CODE_MASK)!==0){
+            // 无效，清掉
+            cell.Code=0;
+          }
+          continue;
+        }
+        const code=cell.Code & CELL_CODE_MASK;
+        let f;
+        if(c===0) f=running?1:0;
+        else f=(flags[c-1] & FlagsMask[r])?1:0;
+        execInstr(net,code,c,r,f,flags,now);
+      }
+      if(c<NET_COLUMNS-1 && flags[c]!==0){
+        for(let i=0;i<NET_ROWS-1;i++){
+          flags[c]=flags[c] | ((flags[c] & net.Bars[c])<<1);
+          flags[c]=flags[c] | ((flags[c] & (net.Bars[c]<<1))>>1);
+        }
+      }
+    }
+    if(n===curNet){
+      for(let i=0;i<NET_COLUMNS-1;i++) netFlagsOnline[i]=flags[i];
+    }
+  }
+  savePrev();
+}
+function savePrev(){
+  mem.Mh.set(mem.M); mem.Ih.set(mem.I); mem.Qh.set(mem.Q);
+  mem.Crh.set(mem.Cr); mem.Cdh.set(mem.Cd); mem.Trh.set(mem.Tr); mem.Tdh.set(mem.Td);
+}
+
+function execInstr(net,code,c,r,f,flags,now){
+  const setF=(val)=>{if(val) flags[c]=flags[c]|FlagsMask[r];};
+  switch(code){
+    case CONN: if(f) flags[c]=flags[c]|FlagsMask[r]; break;
+    case NEG: if(!f) flags[c]=flags[c]|FlagsMask[r]; break;
+    case NO: if(f&&getDataValue(net,r,c)) flags[c]=flags[c]|FlagsMask[r]; break;
+    case NC: if(f&&!getDataValue(net,r,c)) flags[c]=flags[c]|FlagsMask[r]; break;
+    case RE: if(f&&getDataValue(net,r,c)&&!getPrevValue(net,r,c)) flags[c]=flags[c]|FlagsMask[r]; break;
+    case FE: if(f&&!getDataValue(net,r,c)&&getPrevValue(net,r,c)) flags[c]=flags[c]|FlagsMask[r]; break;
+    case COIL: if(f){setDataValue(net,r,c,1);flags[c]=flags[c]|FlagsMask[r];}else setDataValue(net,r,c,0); break;
+    case COILL: if(f){setDataValue(net,r,c,1);flags[c]=flags[c]|FlagsMask[r];} break;
+    case COILU: if(f){setDataValue(net,r,c,0);flags[c]=flags[c]|FlagsMask[r];} break;
+    case TON: execTimer(net,r,c,f,flags,false,false,now); break;
+    case TOFF: execTimer(net,r,c,f,flags,true,false,now); break;
+    case TP: execTimer(net,r,c,f,flags,false,true,now); break;
+    case CTU: execCounter(net,r,c,f,flags,true); break;
+    case CTD: execCounter(net,r,c,f,flags,false); break;
+    case MOVE: if(f){setDataValue(net,r+1,c,getDataValue(net,r,c));flags[c]=flags[c]|FlagsMask[r];} break;
+    case SUB: if(f){
+      const a=getDataValue(net,r,c),b=getDataValue(net,r+1,c);
+      if(a>b) flags[c]=flags[c]|FlagsMask[r];
+      else if(a===b) flags[c]=flags[c]|FlagsMask[r+1];
+      else flags[c]=flags[c]|FlagsMask[r+2];
+      setDataValue(net,r+2,c,a-b);
+    } break;
+    case ADD: if(f){setDataValue(net,r+2,c,getDataValue(net,r,c)+getDataValue(net,r+1,c));flags[c]=flags[c]|FlagsMask[r];} break;
+    case MUL: if(f){setDataValue(net,r+2,c,getDataValue(net,r,c)*getDataValue(net,r+1,c));flags[c]=flags[c]|FlagsMask[r];} break;
+    case DIV: if(f){
+      const b=getDataValue(net,r+1,c);
+      if(b===0){setDataValue(net,r+2,c,0);flags[c]=flags[c]|FlagsMask[r+2];}
+      else{setDataValue(net,r+2,c,Math.trunc(getDataValue(net,r,c)/b));flags[c]=flags[c]|FlagsMask[r];}
+    } break;
+    case MOD: if(f){setDataValue(net,r+2,c,getDataValue(net,r,c)%getDataValue(net,r+1,c));flags[c]=flags[c]|FlagsMask[r];} break;
+    case SHL: if(f){setDataValue(net,r+1,c,getDataValue(net,r,c)<<1);flags[c]=flags[c]|FlagsMask[r];} break;
+    case SHR: if(f){setDataValue(net,r+1,c,getDataValue(net,r,c)>>1);flags[c]=flags[c]|FlagsMask[r];} break;
+    case ROL: if(f){let v=getDataValue(net,r,c)&0xffff;let carry=v&0x8000;v=(v<<1)&0xffff;if(carry)v|=1;setDataValue(net,r+1,c,v);flags[c]=flags[c]|FlagsMask[r];} break;
+    case ROR: if(f){let v=getDataValue(net,r,c)&0xffff;let carry=v&0x0001;v=(v>>1)&0xffff;if(carry)v|=0x8000;setDataValue(net,r+1,c,v);flags[c]=flags[c]|FlagsMask[r];} break;
+    case AND: if(f){setDataValue(net,r+2,c,(getDataValue(net,r,c)&getDataValue(net,r+1,c))&0xffff);flags[c]=flags[c]|FlagsMask[r];} break;
+    case OR: if(f){setDataValue(net,r+2,c,(getDataValue(net,r,c)|getDataValue(net,r+1,c))&0xffff);flags[c]=flags[c]|FlagsMask[r];} break;
+    case XOR: if(f){setDataValue(net,r+2,c,(getDataValue(net,r,c)^getDataValue(net,r+1,c))&0xffff);flags[c]=flags[c]|FlagsMask[r];} break;
+    case NOT: if(f){setDataValue(net,r+1,c,(~getDataValue(net,r,c))&0xffff);flags[c]=flags[c]|FlagsMask[r];} break;
+    case EQ: if(f&&getDataValue(net,r,c)===getDataValue(net,r+1,c)) flags[c]=flags[c]|FlagsMask[r]; break;
+    case GT: if(f&&getDataValue(net,r,c)>getDataValue(net,r+1,c)) flags[c]=flags[c]|FlagsMask[r]; break;
+    case GE: if(f&&getDataValue(net,r,c)>=getDataValue(net,r+1,c)) flags[c]=flags[c]|FlagsMask[r]; break;
+    case LT: if(f&&getDataValue(net,r,c)<getDataValue(net,r+1,c)) flags[c]=flags[c]|FlagsMask[r]; break;
+    case LE: if(f&&getDataValue(net,r,c)<=getDataValue(net,r+1,c)) flags[c]=flags[c]|FlagsMask[r]; break;
+    case NE: if(f&&getDataValue(net,r,c)!==getDataValue(net,r+1,c)) flags[c]=flags[c]|FlagsMask[r]; break;
+  }
+}
+
+// 定时器（移植 execTON/TOFF/TP）。idx = Cells[r][c].Data
+// 操作局部 flags 数组（仅 curNet 的 flags 会被复制到 netFlagsOnline 供显示）
+function execTimer(net,r,c,f,flags,toff,tp,now){
+  const idx=net.Cells[r][c].Data;
+  const param=net.Cells[r+1][c];
+  const base=param.Type||1, setpt=param.Data;
+  const T=mem.Timers[idx];
+  const setF=(rr)=>{flags[c]=flags[c]|FlagsMask[rr];};
+  if(!toff && !tp){ // TON
+    if(!f){T.acc=0;mem.Tr[idx]=0;mem.Td[idx]=0;}
+    if(f&&!mem.Td[idx]&&!mem.Tr[idx]){mem.Tr[idx]=1;T.timeStamp=now;}
+    if(mem.Tr[idx]) T.acc=Math.trunc((now-T.timeStamp)/base);
+    if(mem.Tr[idx]&&((now-T.timeStamp)>=(setpt*base))){mem.Tr[idx]=0;mem.Td[idx]=1;T.acc=setpt;}
+    if(mem.Td[idx]) setF(r);
+    if(mem.Tr[idx]) setF(r+1);
+  } else if(toff){ // TOFF
+    if(f&&!mem.Td[idx]&&!mem.Tr[idx]) mem.Td[idx]=1;
+    if(f&&mem.Tr[idx]) mem.Tr[idx]=0;
+    if(!f&&mem.Td[idx]&&!mem.Tr[idx]){mem.Tr[idx]=1;T.timeStamp=now;}
+    if(mem.Tr[idx]) T.acc=Math.trunc((now-T.timeStamp)/base);
+    if(mem.Tr[idx]&&((now-T.timeStamp)>=(setpt*base))){mem.Tr[idx]=0;mem.Td[idx]=0;T.acc=setpt;}
+    if(mem.Td[idx]) setF(r);
+    if(mem.Tr[idx]) setF(r+1);
+  } else { // TP
+    if(f&&!mem.Td[idx]&&!mem.Tr[idx]){mem.Td[idx]=1;mem.Tr[idx]=1;T.timeStamp=now;}
+    if(!f&&!mem.Td[idx]&&mem.Tr[idx]) mem.Tr[idx]=0;
+    if(mem.Td[idx]) T.acc=Math.trunc((now-T.timeStamp)/base);
+    if(mem.Td[idx]&&((now-T.timeStamp)>=(setpt*base))){mem.Td[idx]=0;T.acc=setpt;}
+    if(mem.Td[idx]) setF(r);
+    if(mem.Tr[idx]) setF(r+1);
+  }
+}
+// 计数器（移植 execCTU/CTD）。复位由下一行 (r+1) 的输入电源驱动
+function execCounter(net,r,c,f,flags,up){
+  const idx=net.Cells[r][c].Data, setpt=net.Cells[r+1][c].Data;
+  let resetF;
+  if(c===0) resetF=running?1:0;
+  else resetF=(flags[c-1]&FlagsMask[r+1])?1:0;
+  if(resetF){
+    if(up){mem.C[idx]=0;mem.Cd[idx]=0;mem.Cr[idx]=0;}
+    else{mem.C[idx]=setpt;mem.Cd[idx]=0;mem.Cr[idx]=0;}
+  }
+  if(f&&!mem.Cr[idx]&&!mem.Cd[idx]){mem.Cr[idx]=1; if(up) mem.C[idx]++; else mem.C[idx]--;}
+  if(!f) mem.Cr[idx]=0;
+  if(up && mem.C[idx]>=setpt) mem.Cd[idx]=1;
+  if(!up && mem.C[idx]===0) mem.Cd[idx]=1;
+  if(mem.Cd[idx]&&f) flags[c]=flags[c]|FlagsMask[r];
+  if(mem.Cr[idx]&&f) flags[c]=flags[c]|FlagsMask[r+1];
+}
+
+// =====================================================================
+//  UI：网格点击 / 调色板 / 编辑面板
+// =====================================================================
+function onGridClick(e){
+  const svg=document.getElementById('netSvg');
+  const rect=svg.getBoundingClientRect();
+  const sx=(e.clientX-rect.left)-(PAD);
+  const sy=(e.clientY-rect.top)-(PAD);
+  if(sx<RAIL||sy<0||sx>NET_W||sy>NET_H){selR=-1;selC=-1;render();updateSelLabel();return;}
+  const c=Math.floor((sx-RAIL)/CW);
+  const r=Math.floor(sy/RH);
+  if(c<0||c>=NET_COLUMNS||r<0||r>=NET_ROWS){selR=-1;selC=-1;render();updateSelLabel();return;}
+  // 调整到指令起始格
+  const net=program[curNet];
+  let code=net.Cells[r][c].Code;
+  if(code & CELL_USED_MASK){
+    const hbits=(code>>12)&0x0007;
+    const wbit=(code>>15)&1;
+    selR=r-hbits; selC=c-wbit;
+  } else {selR=r;selC=c;}
+  render(); updateSelLabel();
+  // 若调色板已选指令，直接放置
+  if(selectedInstrCode!==null){
+    placeSelectedInstruction();
+  } else {
+    openEditPanel();
+  }
+}
+
+function updateSelLabel(){
+  const el=document.getElementById('selCellLbl');
+  if(selR<0){el.textContent='未选择';return;}
+  const cell=program[curNet].Cells[selR][selC];
+  const code=cell.Code & CELL_CODE_MASK;
+  if(code===0) el.textContent=`行${selR} 列${selC} (空)`;
+  else el.textContent=`行${selR} 列${selC} — ${MNEMONIC_CODES[code]}`;
+}
+
+// 调色板
+function buildPaletteTabs(){
+  const wrap=document.getElementById('paletteTabs');
+  wrap.innerHTML='';
+  const tabs=['触点/线圈','数学','比较','列','行','网络'];
+  tabs.forEach((t,i)=>{
+    const b=document.createElement('button');b.textContent=t;b.className=(i===curPaletteTab)?'active':'';
+    b.onclick=()=>{curPaletteTab=i;palettePage=Math.min(i,2);buildPaletteTabs();buildPalette();buildElementsMenu();};
+    wrap.appendChild(b);
+  });
+}
+function buildPalette(){
+  const wrap=document.getElementById('palette');
+  wrap.innerHTML='';
+  if(curPaletteTab>2){wrap.style.display='none';return;}
+  wrap.style.display='grid';
+  palettePage=curPaletteTab;
+  const items=MENU_INSTRUCTIONS[palettePage];
+  for(let i=0;i<15;i++){
+    const code=items[i];
+    const b=document.createElement('div');
+    b.className='ibtn';
+    if(code===BAR_MNEMONIC_CODE){
+      b.classList.add('bar');
+      b.textContent='BAR';
+      b.title='垂直连接条（在选中格切换）';
+      if(selR>=0 && selC<NET_COLUMNS-1 && (program[curNet].Bars[selC]&FlagsMask[selR])) b.classList.add('sel');
+    } else if(code===NOPP){
+      b.textContent='NOP';
+      b.title='空操作（清除该格）';
+    } else {
+      b.textContent=MNEMONIC_CODES[code];
+    }
+    b.onclick=()=>onPalettePick(code);
+    wrap.appendChild(b);
+  }
+}
+function onPalettePick(code){
+  if(selR<0||selC<0){status('请先在网格上选择一个单元格');return;}
+  selectedInstrCode=code;
+  if(code===BAR_MNEMONIC_CODE){
+    toggleBar();
+    selectedInstrCode=null;
+    render();buildPalette();return;
+  }
+  placeSelectedInstruction();
+}
+function toggleBar(){
+  if(selC>=NET_COLUMNS-1||selR>=NET_ROWS-1){status('垂直条只能在网络内部（非末列/末行）');return;}
+  const net=program[curNet];
+  if(net.Bars[selC]&FlagsMask[selR]) net.Bars[selC]&=FlagsMaskAnd[selR];
+  else net.Bars[selC]|=FlagsMask[selR];
+  status('已切换垂直条');
+}
+
+// 放置指令（镜像 touchLadderEditor 的尺寸校验与多格标记）
+function placeSelectedInstruction(){
+  if(selR<0||selC<0)return;
+  const code=selectedInstrCode;
+  const net=program[curNet];
+  if(code===NOPP){clearCell(net,selR,selC);selectedInstrCode=null;render();buildPalette();updateSelLabel();return;}
+  if(code===CONN||code===NEG){
+    clearCell(net,selR,selC);
+    net.Cells[selR][selC].Code=code;
+    selectedInstrCode=null;render();buildPalette();updateSelLabel();return;
+  }
+  if(!checkValid(code)){selectedInstrCode=null;render();buildPalette();updateSelLabel();return;}
+  // 设置主格 + 子格标记
+  clearCell(net,selR,selC);
+  net.Cells[selR][selC].Code=code;
+  if(INSTR_H[code]>=2){net.Cells[selR+1][selC].Code=code|0x1000;}
+  if(INSTR_H[code]>=3){net.Cells[selR+2][selC].Code=code|0x2000;}
+  // 默认数据类型
+  if(code>=NO&&code<=COILU){
+    net.Cells[selR][selC].Type=TypeM; net.Cells[selR][selC].Data=0;
+  } else if(code>=TON&&code<=CTD){
+    net.Cells[selR][selC].Type=0; net.Cells[selR][selC].Data=0;
+    net.Cells[selR+1][selC].Type=TIMER_BASE_TIME[3]; net.Cells[selR+1][selC].Data=10;
+  } else {
+    net.Cells[selR][selC].Type=TypeD; net.Cells[selR][selC].Data=0;
+    if(INSTR_H[code]>=2){net.Cells[selR+1][selC].Type=TypeK; net.Cells[selR+1][selC].Data=0;}
+    if(INSTR_H[code]>=3){net.Cells[selR+2][selC].Type=TypeD; net.Cells[selR+2][selC].Data=0;}
+  }
+  selectedInstrCode=null;
+  render();buildPalette();updateSelLabel();
+  openEditPanel();
+}
+function checkValid(code){
+  const net=program[curNet];
+  const w=INSTR_W[code], h=INSTR_H[code];
+  for(let dw=0;dw<w;dw++)for(let dh=0;dh<h;dh++){
+    const rr=selR+dh, cc=selC+dw;
+    if(rr>=NET_ROWS){status('放不下：行数不足');return false;}
+    if(cc>=NET_COLUMNS){status('放不下：列数不足');return false;}
+    if(net.Cells[rr][cc].Code!==0){status(`行${rr} 列${cc} 已被占用`);return false;}
+  }
+  return true;
+}
+function clearCell(net,r,c){
+  // 若该格属于多格指令，连同清除
+  const code=net.Cells[r][c].Code;
+  if(code===0){net.Cells[r][c].Code=0;net.Cells[r][c].Data=0;net.Cells[r][c].Type=0;return;}
+  const realCode=code & CELL_CODE_MASK;
+  const h=INSTR_H[realCode]||1, w=INSTR_W[realCode]||1;
+  // 找到起始格
+  let sr=r-((code>>12)&0x0007), sc=c-((code>>15)&1);
+  for(let dw=0;dw<w;dw++)for(let dh=0;dh<h;dh++){
+    const rr=sr+dh, cc=sc+dw;
+    if(rr<NET_ROWS&&cc<NET_COLUMNS){net.Cells[rr][cc].Code=0;net.Cells[rr][cc].Data=0;net.Cells[rr][cc].Type=0;}
+  }
+}
+
+// 编辑面板（配置数据类型与地址/常量）
+function openEditPanel(){
+  const panel=document.getElementById('editPanel');
+  if(selR<0||selC<0){panel.classList.remove('show');return;}
+  const net=program[curNet];
+  const cell=net.Cells[selR][selC];
+  const code=cell.Code & CELL_CODE_MASK;
+  if(code===0||code===CONN||code===NEG){panel.classList.remove('show');return;}
+  let html=`<div class="ep-head"><span>${MNEMONIC_CODES[code]} @ 行${selR} 列${selC}</span><button onclick="document.getElementById('editPanel').classList.remove('show')">✕</button></div><div class="ep-body">`;
+  if(code>=NO&&code<=COILU){
+    html+=`<div class="ep-row"><label>数据类型</label><div class="types" id="typeRow"></div></div>`;
+    html+=`<div class="ep-row"><label>地址 (0 ~ ${getMaxAddr(cell.Type)})</label><div class="numinput"><input type="number" id="addrInput" value="${cell.Data}" min="${getMinAddr(cell.Type)}" max="${getMaxAddr(cell.Type)}"><button onclick="setAddr()">设定</button></div></div>`;
+    html+=`<div class="ep-row"><label>当前值</label><div class="val" id="curVal"></div></div>`;
+  } else if(code>=TON&&code<=CTD){
+    html+=`<div class="ep-row"><label>${code<=TP?'定时器号':'计数器号'} (0 ~ ${QTY.T-1})</label><div class="numinput"><input type="number" id="addrInput" value="${cell.Data}" min="0" max="${code<=TP?QTY.T-1:QTY.C-1}"><button onclick="setAddr()">设定</button></div></div>`;
+    if(code<=TP){
+      html+=`<div class="ep-row"><label>时基</label><div class="types" id="baseRow"></div></div>`;
+    }
+    const param=net.Cells[selR+1][selC];
+    html+=`<div class="ep-row"><label>设定值 SET</label><div class="numinput"><input type="number" id="setptInput" value="${param.Data}" min="0" max="32767"><button onclick="setSetpt()">设定</button></div></div>`;
+    html+=`<div class="ep-row"><label>累计值 ACC</label><div class="val" id="curVal"></div></div>`;
+  } else {
+    // 16 位：每行一个操作数
+    for(let i=0;i<INSTR_H[code];i++){
+      const cc=net.Cells[selR+i][selC];
+      html+=`<div class="ep-row"><label>操作数 ${i+1}</label><div class="types" id="typeRow${i}"></div>`;
+      html+=`<div class="numinput"><input type="number" id="addrInput${i}" value="${cc.Data}" min="${getMinAddr(cc.Type)}" max="${getMaxAddr(cc.Type)}"><button onclick="setAddr16(${i})">设定</button></div>`;
+      html+=`<div class="val" id="curVal${i}"></div></div>`;
+    }
+  }
+  html+=`<div class="ep-row"><button class="danger" onclick="deleteInstr()">删除指令</button></div>`;
+  html+=`</div>`;
+  panel.innerHTML=html;
+  panel.classList.add('show');
+  // 填充类型按钮
+  if(code>=NO&&code<=COILU){
+    fillTypes('typeRow',BOOL_TYPES,cell.Type,(t)=>{cell.Type=t;clampAddr(cell);openEditPanel();});
+  } else if(code<=TP){
+    fillBase('baseRow',cell);
+  }
+  if(code>=MOVE||code===NOT||(code>=SHL&&code<=ROR)){
+    for(let i=0;i<INSTR_H[code];i++){
+      fillTypes('typeRow'+i,MENU_DATA_TYPES,net.Cells[selR+i][selC].Type,(t)=>{net.Cells[selR+i][selC].Type=t;clampAddr(net.Cells[selR+i][selC]);openEditPanel();});
+    }
+  }
+  if(code>=EQ&&code<=NE){
+    for(let i=0;i<2;i++){
+      fillTypes('typeRow'+i,MENU_DATA_TYPES,net.Cells[selR+i][selC].Type,(t)=>{net.Cells[selR+i][selC].Type=t;clampAddr(net.Cells[selR+i][selC]);openEditPanel();});
+    }
+  }
+  updateEditPanelValues();
+}
+function fillTypes(id,types,cur,cb){
+  const row=document.getElementById(id); if(!row)return;
+  row.innerHTML='';
+  types.forEach(t=>{
+    const b=document.createElement('button');b.textContent=MNEMONIC_TYPES[t];
+    if(t===cur)b.classList.add('on');
+    b.onclick=()=>cb(t);row.appendChild(b);
+  });
+}
+function fillBase(id,cell){
+  const param=program[curNet].Cells[selR+1][selC];
+  const row=document.getElementById(id);if(!row)return;row.innerHTML='';
+  TIMER_BASE_TIME.forEach((bt,i)=>{
+    const b=document.createElement('button');b.textContent=TIMER_BASE_TEXT[i];
+    if(param.Type===bt)b.classList.add('on');
+    b.onclick=()=>{param.Type=bt;openEditPanel();};row.appendChild(b);
+  });
+}
+function setAddr(){const cell=program[curNet].Cells[selR][selC];const v=parseInt(document.getElementById('addrInput').value);cell.Data=v;clampAddr(cell);openEditPanel();}
+function setSetpt(){const p=program[curNet].Cells[selR+1][selC];p.Data=parseInt(document.getElementById('setptInput').value)||0;openEditPanel();}
+function setAddr16(i){const cell=program[curNet].Cells[selR+i][selC];const v=parseInt(document.getElementById('addrInput'+i).value);cell.Data=v;clampAddr(cell);openEditPanel();}
+function updateEditPanelValues(){
+  if(selR<0||selC<0)return;
+  const net=program[curNet],cell=net.Cells[selR][selC],code=cell.Code&CELL_CODE_MASK;
+  const cv=document.getElementById('curVal');
+  if(cv && code>=NO&&code<=COILU) cv.textContent=getDataValue(net,selR,selC);
+  if(cv && code>=TON&&code<=CTD){
+    if(code<=TP) cv.textContent=mem.Timers[cell.Data].acc;
+    else cv.textContent=mem.C[cell.Data];
+  }
+  if(code>=MOVE||code===NOT||(code>=SHL&&code<=ROR)||(code>=EQ&&code<=NE)){
+    for(let i=0;i<INSTR_H[code];i++){
+      const v=document.getElementById('curVal'+i);if(v)v.textContent=getDataValue(net,selR+i,selC);
+    }
+  }
+}
+function deleteInstr(){clearCell(program[curNet],selR,selC);document.getElementById('editPanel').classList.remove('show');render();buildPalette();updateSelLabel();}
+
+// 元素操作菜单
+function buildElementsMenu(){
+  const wrap=document.getElementById('elementsMenu');
+  wrap.innerHTML='';
+  if(curPaletteTab<=2)return;
+  const kind=curPaletteTab-3; // 0 col,1 row,2 net
+  ELEMENT_FUNC.forEach(fn=>{
+    const b=document.createElement('div');
+    b.className='ebtn '+['col','row','net'][kind];
+    b.innerHTML=fn+'<br><b>'+ELEMENT_LIST[kind]+'</b>';
+    b.onclick=()=>elementOp(kind,fn);
+    wrap.appendChild(b);
+  });
+}
+function elementOp(kind,fn){
+  const net=program[curNet];
+  if(kind===0){ // COLUMN
+    if(fn==='COPY')copyCol();else if(fn==='PASTE')pasteCol();else if(fn==='INSERT')insertCol();else deleteCol();
+  } else if(kind===1){ // ROW
+    if(fn==='COPY')copyRow();else if(fn==='PASTE')pasteRow();else if(fn==='INSERT')insertRow();else deleteRow();
+  } else { // NETWORK
+    if(fn==='COPY')clipboard={type:'network',data:cloneNetwork(net)};
+    else if(fn==='PASTE'){if(networkIsEmpty(net))program[curNet]=cloneNetwork(clipboard.data);else status('当前网络非空，无法粘贴');}
+    else if(fn==='INSERT')insertNetwork();
+    else deleteNetwork();
+  }
+  render();
+}
+function copyCol(){const net=program[curNet];clipboard={type:'col',data:{cells:net.Cells.map(r=>r[selC]),bar:net.Bars[selC]}};}
+function pasteCol(){const net=program[curNet];if(!clipboard||clipboard.type!=='col')return;for(let r=0;r<NET_ROWS;r++){if(net.Cells[r][selC].Code!==0){status('列非空');return;}}for(let r=0;r<NET_ROWS;r++)net.Cells[r][selC]=cloneCell(clipboard.data.cells[r]);net.Bars[selC]=clipboard.data.bar;}
+function insertCol(){const net=program[curNet];for(let r=0;r<NET_ROWS;r++)if(net.Cells[r][NET_COLUMNS-1].Code!==0){status('末列非空，无法插入');return;}for(let c=NET_COLUMNS-1;c>selC;c--){for(let r=0;r<NET_ROWS;r++)net.Cells[r][c]=net.Cells[r][c-1];net.Bars[c]=net.Bars[c-1];}for(let r=0;r<NET_ROWS;r++){net.Cells[r][selC].Code=0;net.Cells[r][selC].Data=0;net.Cells[r][selC].Type=0;}net.Bars[selC]=0;}
+function deleteCol(){const net=program[curNet];for(let c=selC;c<NET_COLUMNS-1;c++){for(let r=0;r<NET_ROWS;r++)net.Cells[r][c]=net.Cells[r][c+1];}for(let c=selC;c<NET_COLUMNS-2;c++)net.Bars[c]=net.Bars[c+1];for(let r=0;r<NET_ROWS;r++){net.Cells[r][NET_COLUMNS-1].Code=0;net.Cells[r][NET_COLUMNS-1].Data=0;net.Cells[r][NET_COLUMNS-1].Type=0;}net.Bars[NET_COLUMNS-2]=0;}
+function copyRow(){const net=program[curNet];clipboard={type:'row',data:{cells:net.Cells[selR].map(c=>cloneCell(c)),bars:net.Bars.slice()}};}
+function pasteRow(){const net=program[curNet];if(!clipboard||clipboard.type!=='row')return;for(let c=0;c<NET_COLUMNS;c++)if(net.Cells[selR][c].Code!==0){status('行非空');return;}net.Cells[selR]=clipboard.data.cells.map(c=>cloneCell(c));}
+function insertRow(){const net=program[curNet];for(let c=0;c<NET_COLUMNS;c++)if(net.Cells[NET_ROWS-1][c].Code!==0){status('末行非空');return;}for(let r=NET_ROWS-1;r>selR;r--){net.Cells[r]=net.Cells[r-1].map(c=>cloneCell(c));}for(let c=0;c<NET_COLUMNS;c++){net.Cells[selR][c]=emptyCell();}}
+function deleteRow(){const net=program[curNet];for(let r=selR;r<NET_ROWS-1;r++){net.Cells[r]=net.Cells[r+1].map(c=>cloneCell(c));}for(let c=0;c<NET_COLUMNS;c++)net.Cells[NET_ROWS-1][c]=emptyCell();}
+function insertNetwork(){
+  if(!networkIsEmpty(program[TOTAL_NETWORKS-1])){status('最后一个网络非空，无法插入');return;}
+  for(let n=TOTAL_NETWORKS-1;n>curNet;n--)program[n]=program[n-1];
+  program[curNet]=emptyNetwork();
+  render();
+}
+function deleteNetwork(){
+  program[curNet]=emptyNetwork();
+  // 上移
+  for(let n=curNet;n<TOTAL_NETWORKS-1;n++)program[n]=program[n+1];
+  program[TOTAL_NETWORKS-1]=emptyNetwork();
+  render();
+}
+
+// =====================================================================
+//  导入 / 导出（.plsi 二进制与固件二进制布局完全一致）
+//  Network = Cells[5][6](行优先) + Bars[5]；Cell={Code u16, Data i16, Type u16}
+//  小端序；程序 = Network[400]
+// =====================================================================
+function networkByteSize(){return NET_ROWS*NET_COLUMNS*6 + (NET_COLUMNS-1)*2;} // 190
+function programByteSize(){return TOTAL_NETWORKS*networkByteSize();} // 76000
+
+function encodePlsi(){
+  const buf=new ArrayBuffer(programByteSize());
+  const dv=new DataView(buf);
+  let off=0;
+  for(let n=0;n<TOTAL_NETWORKS;n++){
+    const net=program[n];
+    // Cells 行优先
+    for(let r=0;r<NET_ROWS;r++){
+      for(let c=0;c<NET_COLUMNS;c++){
+        const cell=net.Cells[r][c];
+        dv.setUint16(off,cell.Code & 0xFFFF,true); off+=2;
+        dv.setInt16(off,cell.Data,true); off+=2;
+        dv.setUint16(off,cell.Type & 0xFFFF,true); off+=2;
+      }
+    }
+    // Bars[5]
+    for(let b=0;b<NET_COLUMNS-1;b++){dv.setUint16(off,net.Bars[b] & 0xFFFF,true);off+=2;}
+  }
+  return new Uint8Array(buf);
+}
+function decodePlsi(bytes){
+  if(bytes.length<programByteSize()) throw new Error('文件尺寸不符：期望 '+programByteSize()+' 字节，实际 '+bytes.length);
+  const dv=new DataView(bytes.buffer,bytes.byteOffset,programByteSize());
+  let off=0;
+  for(let n=0;n<TOTAL_NETWORKS;n++){
+    const net=program[n];
+    for(let r=0;r<NET_ROWS;r++){
+      for(let c=0;c<NET_COLUMNS;c++){
+        net.Cells[r][c].Code=dv.getUint16(off,true);off+=2;
+        net.Cells[r][c].Data=dv.getInt16(off,true);off+=2;
+        net.Cells[r][c].Type=dv.getUint16(off,true);off+=2;
+      }
+    }
+    for(let b=0;b<NET_COLUMNS-1;b++){net.Bars[b]=dv.getUint16(off,true);off+=2;}
+  }
+}
+
+function download(filename,data,mime){
+  const blob=new Blob([data],{type:mime||'application/octet-stream'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();
+  document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function exportPlsi(){
+  const bytes=encodePlsi();
+  const name=(document.getElementById('progName').value||'PROGRAM')+'.plsi';
+  download(name,bytes,'application/octet-stream');
+  status('已导出固件可加载的 '+name+'（'+bytes.length+' 字节）');
+}
+function exportJson(){
+  const compact=[];
+  for(let n=0;n<TOTAL_NETWORKS;n++){if(!networkIsEmpty(program[n])) compact.push({n,net:programToJson(program[n])});}
+  const data={app:'PLsi-WebLadder',version:'1.0',name:document.getElementById('progName').value,totalNetworks:TOTAL_NETWORKS,rows:NET_ROWS,cols:NET_COLUMNS,networks:compact};
+  download((data.name||'PROGRAM')+'.plsi.json',JSON.stringify(data,null,2),'application/json');
+  status('已导出 JSON');
+}
+function programToJson(n){
+  const cells=[];
+  for(let r=0;r<NET_ROWS;r++)for(let c=0;c<NET_COLUMNS;c++){const cl=n.Cells[r][c];if(cl.Code!==0)cells.push({r,c,Code:cl.Code,Data:cl.Data,Type:cl.Type});}
+  const bars=[];for(let b=0;b<NET_COLUMNS-1;b++)if(n.Bars[b])bars.push({b,v:n.Bars[b]});
+  return {cells,bars};
+}
+function importFile(file){
+  const reader=new FileReader();
+  reader.onload=()=>{
+    if(file.name.endsWith('.json')){
+      try{
+        const obj=JSON.parse(reader.result);
+        emptyProgram();
+        if(obj.networks)obj.networks.forEach(item=>{program[item.n]=jsonToNetwork(item.net);});
+        curNet=0;render();buildPalette();status('已导入 JSON：'+file.name);
+      }catch(e){status('JSON 解析失败：'+e.message);}
+    } else {
+      // .plsi 二进制
+      try{
+        const bytes=new Uint8Array(reader.result);
+        emptyProgram();
+        decodePlsi(bytes);
+        curNet=0;render();buildPalette();status('已导入 .plsi：'+file.name);
+      }catch(e){status('.plsi 解析失败：'+e.message);}
+    }
+  };
+  if(file.name.endsWith('.json')) reader.readAsText(file); else reader.readAsArrayBuffer(file);
+}
+function jsonToNetwork(j){
+  const n=emptyNetwork();
+  if(j.cells)j.cells.forEach(cl=>{n.Cells[cl.r][cl.c]={Code:cl.Code,Data:cl.Data,Type:cl.Type};});
+  if(j.bars)j.bars.forEach(b=>{n.Bars[b.b]=b.v;});
+  return n;
+}
+
+// 助记符程序清单
+function generateListing(){
+  const lines=[];
+  lines.push('// PLsi Ladder Program Listing');
+  lines.push('// Name: '+(document.getElementById('progName').value||'PROGRAM'));
+  lines.push('// Generated: '+new Date().toISOString());
+  lines.push('// Network = 5 rows x 6 cols, Bars[5]');
+  lines.push('');
+  for(let n=0;n<TOTAL_NETWORKS;n++){
+    const net=program[n];
+    if(networkIsEmpty(net)) continue;
+    lines.push(`NETWORK ${n}`);
+    for(let c=0;c<NET_COLUMNS;c++){
+      for(let r=0;r<NET_ROWS;r++){
+        const cell=net.Cells[r][c];const code=cell.Code;
+        if(code===0)continue;
+        if(code & CELL_USED_MASK)continue; // 子格
+        const mnem=MNEMONIC_CODES[code];
+        let desc='';
+        if(code===CONN)desc='— 水平连接';
+        else if(code===NEG)desc='— 取反';
+        else if(code>=NO&&code<=FE)desc=`${MNEMONIC_TYPES[cell.Type]}${cell.Data} (位)`;
+        else if(code>=COIL&&code<=COILU)desc=`${MNEMONIC_TYPES[cell.Type]}${cell.Data} (线圈)`;
+        else if(code>=TON&&code<=TP){
+          const p=net.Cells[r+1][c];
+          const bi=TIMER_BASE_TIME.indexOf(p.Type);
+          desc=`T${cell.Data}, SET ${TIMER_BASE_TEXT[bi>=0?bi:0]}=${p.Data}`;
+        }
+        else if(code===CTU||code===CTD)desc=`C${cell.Data}, SET=${net.Cells[r+1][c].Data}`;
+        else if(code===MOVE)desc=`${MNEMONIC_TYPES[cell.Type]}${cell.Data} -> ${MNEMONIC_TYPES[net.Cells[r+1][c].Type]}${net.Cells[r+1][c].Data}`;
+        else if(code>=EQ&&code<=NE){const b2=net.Cells[r+1][c];desc=`${MNEMONIC_TYPES[cell.Type]}${cell.Data}  ${mnem}  ${MNEMONIC_TYPES[b2.Type]}${b2.Data}`;}
+        else if(INSTR_H[code]===3){const b=net.Cells[r+1][c],d=net.Cells[r+2][c];desc=`${MNEMONIC_TYPES[cell.Type]}${cell.Data}, ${MNEMONIC_TYPES[b.Type]}${b.Data} -> ${MNEMONIC_TYPES[d.Type]}${d.Data}`;}
+        else {const b=net.Cells[r+1][c];desc=`${MNEMONIC_TYPES[cell.Type]}${cell.Data} -> ${MNEMONIC_TYPES[b.Type]}${b.Data}`;}
+        lines.push(`  [r${r} c${c}] ${mnem.padEnd(5)} ${desc}`);
+      }
+    }
+    // 条
+    for(let b=0;b<NET_COLUMNS-1;b++)if(net.Bars[b])lines.push(`  BAR @ col${b}: 0x${net.Bars[b].toString(16)}`);
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+function MnemonicNet(net,r,c){return MNEMONIC_TYPES[net.Cells[r][c].Type]+net.Cells[r][c].Data;}
+
+// =====================================================================
+//  I/O 模拟面板（本地 8 入 / 6 出 / 2 模拟入 / 2 模拟出）
+// =====================================================================
+function buildIOPanel(){
+  const wrap=document.getElementById('ioPanel');
+  wrap.innerHTML='';
+  // 数字输入 I0..I7
+  let g=document.createElement('div');g.className='io-group';g.innerHTML='<span class="ttl">I(数字入)</span>';
+  for(let i=0;i<8;i++){
+    const l=document.createElement('span');l.className='led';l.title='I'+i;l.dataset.idx=i;
+    l.onclick=()=>{mem.I[i]=mem.I[i]?0:1;updateIOPanel();};
+    g.appendChild(l);g.appendChild(document.createTextNode(' '));
+  }
+  wrap.appendChild(g);
+  // 数字输出 Q0..Q5
+  g=document.createElement('div');g.className='io-group';g.innerHTML='<span class="ttl">Q(数字出)</span>';
+  for(let i=0;i<6;i++){const l=document.createElement('span');l.className='led out';l.title='Q'+i;g.appendChild(l);g.appendChild(document.createTextNode(' '));}
+  wrap.appendChild(g);
+  // 模拟入 IW0..IW1
+  g=document.createElement('div');g.className='io-group';g.innerHTML='<span class="ttl">IW(模拟入)</span>';
+  for(let i=0;i<2;i++){const f=document.createElement('span');f.className='vfield';f.innerHTML=`<input type="number" id="iw${i}" value="0" min="0" max="4095">`;f.querySelector('input').oninput=e=>mem.IW[i]=parseInt(e.target.value)||0;g.appendChild(f);}
+  wrap.appendChild(g);
+  // 模拟出 QW0..QW1
+  g=document.createElement('div');g.className='io-group';g.innerHTML='<span class="ttl">QW(模拟出)</span>';
+  for(let i=0;i<2;i++){const f=document.createElement('span');f.className='vfield';f.innerHTML=`<span id="qw${i}" style="color:var(--cyan);font-family:monospace">0</span>`;g.appendChild(f);}
+  wrap.appendChild(g);
+  // M 标志查看（前若干）
+  g=document.createElement('div');g.className='io-group';g.innerHTML='<span class="ttl">M(标志位)</span>';
+  const sel=document.createElement('select');
+  for(let i=500;i<512;i++){const o=document.createElement('option');o.value=i;o.textContent='M'+i;sel.appendChild(o);}
+  g.appendChild(sel);
+  const ml=document.createElement('span');ml.className='led';ml.id='mLed';ml.title='点击切换 M 标志';
+  ml.onclick=()=>{const s=document.querySelector('#ioPanel select');if(s){const idx=parseInt(s.value);mem.M[idx]=mem.M[idx]?0:1;updateIOPanel();}};
+  g.appendChild(ml);
+  wrap.appendChild(g);
+  updateIOPanel();
+}
+function updateIOPanel(){
+  const leds=document.querySelectorAll('#ioPanel .led');
+  let i=0;
+  // I0..7
+  for(let k=0;k<8;k++){if(leds[i])leds[i].classList.toggle('on',!!mem.I[k]);i++;}
+  // Q0..5
+  for(let k=0;k<6;k++){if(leds[i])leds[i].classList.toggle('on',!!mem.Q[k]);i++;}
+  // QW
+  for(let k=0;k<2;k++){const e=document.getElementById('qw'+k);if(e)e.textContent=mem.QW[k];}
+  // M
+  const sel=document.querySelector('#ioPanel select');
+  if(sel){const idx=parseInt(sel.value);const ml=document.getElementById('mLed');if(ml)ml.classList.toggle('on',!!mem.M[idx]);}
+}
+
+// =====================================================================
+//  运行控制
+// =====================================================================
+function setRun(state){
+  running=state;
+  const btn=document.getElementById('btnRun');
+  if(running){btn.classList.add('on');btn.textContent='⏸ 停止';startScanLoop();}
+  else{btn.classList.remove('on');btn.textContent='▶ 运行';stopScanLoop();netFlagsOnline.fill(0);}
+  updateStateBadge();
+  render();
+}
+function startScanLoop(){
+  if(scanTimer)return;
+  scanTimer=setInterval(()=>{
+    scanAll();
+    render();
+    updateIOPanel();
+    updateEditPanelValues();
+    document.getElementById('scanInfo').textContent='扫描中';
+  },100);
+}
+function stopScanLoop(){if(scanTimer){clearInterval(scanTimer);scanTimer=null;}document.getElementById('scanInfo').textContent='';}
+function updateStateBadge(){const b=document.getElementById('stateBadge');b.textContent=running?'RUN':'STOP';b.className='badge '+(running?'run':'stop');}
+
+// =====================================================================
+//  示例程序（镜像 loadDemoUserPogram）
+// =====================================================================
+function loadDemo(){
+  emptyProgram();
+  // 网络 0：M500->Q0, M501->Q1, M502->Q2
+  for(let i=0;i<3;i++){
+    program[0].Cells[i][0]={Code:NO,Data:500+i,Type:TypeM};
+    program[0].Cells[i][1]={Code:COIL,Data:i,Type:TypeQ};
+  }
+  // 网络 1：M503->Q3, M504->Q4, M505->Q5
+  for(let i=0;i<3;i++){
+    program[1].Cells[i][0]={Code:NO,Data:503+i,Type:TypeM};
+    program[1].Cells[i][1]={Code:COIL,Data:3+i,Type:TypeQ};
+  }
+  // 网络 2：D500 -> QW4 ; D501 -> QW5 （MOVE）
+  program[2].Cells[0][0]={Code:MOVE,Data:500,Type:TypeD};
+  program[2].Cells[0][1]={Code:MOVE,Data:0,Type:TypeK}; // 占位（MOVE 占 2 行，第2行）
+  program[2].Cells[1][0]={Code:MOVE|0x1000,Data:500,Type:TypeD};
+  program[2].Cells[1][1]={Code:MOVE|0x1000,Data:4,Type:TypeQW};
+  program[2].Cells[2][0]={Code:MOVE,Data:501,Type:TypeD};
+  program[2].Cells[3][0]={Code:MOVE|0x1000,Data:501,Type:TypeD};
+  program[2].Cells[3][1]={Code:MOVE|0x1000,Data:5,Type:TypeQW};
+  // 修正：按固件示例，MOVE 占两行：主格 r, 子格 r+1
+  // 重新组织网络2为与固件一致：col0 两路 MOVE
+  program[2]=emptyNetwork();
+  program[2].Cells[0][0]={Code:MOVE,Data:500,Type:TypeD};
+  program[2].Cells[1][0]={Code:MOVE|0x1000,Data:4,Type:TypeQW};
+  program[2].Cells[2][0]={Code:MOVE,Data:501,Type:TypeD};
+  program[2].Cells[3][0]={Code:MOVE|0x1000,Data:5,Type:TypeQW};
+  curNet=0;render();buildPalette();status('已加载示例程序（3 个网络）');
+}
+
+// =====================================================================
+//  杂项
+// =====================================================================
+function status(msg){document.getElementById('statLeft').textContent=msg;}
+function gotoNet(n){curNet=Math.max(0,Math.min(TOTAL_NETWORKS-1,n));document.getElementById('netNum').textContent=curNet;selR=-1;selC=-1;netFlagsOnline.fill(0);render();buildPalette();updateSelLabel();document.getElementById('editPanel').classList.remove('show');}
+function showModal(html){document.getElementById('modalBox').innerHTML=html;document.getElementById('modalBg').classList.add('show');}
+function hideModal(){document.getElementById('modalBg').classList.remove('show');}
+
+// =====================================================================
+//  初始化
+// =====================================================================
+function init(){
+  initMem();
+  emptyProgram();
+  buildPaletteTabs();
+  buildPalette();
+  buildElementsMenu();
+  buildIOPanel();
+  document.getElementById('netTotal').textContent=TOTAL_NETWORKS;
+  document.getElementById('netNum').textContent=0;
+  render();
+  // 事件
+  document.getElementById('btnNew').onclick=()=>{emptyProgram();curNet=0;render();buildPalette();status('已新建空程序');};
+  document.getElementById('btnDemo').onclick=loadDemo;
+  document.getElementById('btnImport').onclick=()=>document.getElementById('fileInput').click();
+  document.getElementById('fileInput').onchange=e=>{if(e.target.files[0])importFile(e.target.files[0]);e.target.value='';};
+  document.getElementById('btnExportBin').onclick=exportPlsi;
+  document.getElementById('btnExportJson').onclick=exportJson;
+  document.getElementById('btnListing').onclick=()=>{showModal('<h3>程序清单</h3><textarea readonly>'+generateListing()+'</textarea><div class="btns"><button onclick="hideModal()">关闭</button></div>');};
+  document.getElementById('btnRun').onclick=()=>setRun(!running);
+  document.getElementById('btnStep').onclick=()=>{scanAll();render();updateIOPanel();updateEditPanelValues();status('单步扫描完成');};
+  document.getElementById('btnPrevNet').onclick=()=>gotoNet(curNet-1);
+  document.getElementById('btnNextNet').onclick=()=>gotoNet(curNet+1);
+  document.getElementById('btnAddNet').onclick=()=>insertNetwork();
+  document.getElementById('btnDelNet').onclick=()=>deleteNetwork();
+  document.getElementById('modalBg').onclick=e=>{if(e.target.id==='modalBg')hideModal();};
+  document.addEventListener('keydown',e=>{
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+    if(e.key==='ArrowLeft')gotoNet(curNet-1);
+    if(e.key==='ArrowRight')gotoNet(curNet+1);
+    if(e.key==='Delete'&&selR>=0)deleteInstr();
+    if(e.key==='Escape'){selectedInstrCode=null;document.getElementById('editPanel').classList.remove('show');buildPalette();}
+  });
+}
+init();
+</script>
+</body>
+</html>
