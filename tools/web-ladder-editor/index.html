@@ -30,8 +30,10 @@
   .nav{display:flex;align-items:center;gap:4px}
   .netlabel{color:var(--dim);font-size:12px}
   #main{flex:1;display:grid;grid-template-columns:1fr 320px;grid-template-rows:1fr auto;overflow:hidden}
-  #canvasWrap{grid-row:1/2;grid-column:1;overflow:auto;background:#06090d;padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
-  #netSvg{background:#000;border:1px solid var(--line);border-radius:6px;flex:0 0 auto}
+  #canvasWrap{grid-row:1/2;grid-column:1;overflow:auto;background:#06090d;padding:10px 14px}
+  #netScroll{position:relative;width:100%;min-height:100%}
+  .netBlk{position:absolute;left:50%;transform:translateX(-50%);background:#000;border:1px solid var(--line);border-radius:6px}
+  .netBlk.cur{border-color:#1f6feb;box-shadow:0 0 0 1px #1f6feb,0 0 14px rgba(31,111,235,.25)}
   #paletteWrap{grid-row:1/2;grid-column:2;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
   .pheader{padding:8px 10px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
   .pheader h3{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
@@ -116,7 +118,7 @@
 
 <div id="main">
   <div id="canvasWrap">
-    <svg id="netSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="netScroll"></div>
   </div>
   <div id="paletteWrap">
     <div class="pheader"><h3>指令面板</h3><span class="hint" id="selCellLbl">未选择</span></div>
@@ -200,6 +202,7 @@ const BOOL_TYPES=[TypeI,TypeM,TypeQ,TypeTd,TypeTr,TypeCd,TypeCr];
 // ---------- 网格几何 ----------
 const CW=62, RH=46, RAIL=7, PAD=10;
 const NET_W=RAIL+NET_COLUMNS*CW, NET_H=NET_ROWS*RH;
+const NET_BLOCK_H=NET_H+PAD*2+30; // 单个网络块高度（含标签+间距），用于虚拟滚动定位
 
 // ---------- 程序状态 ----------
 let program=[];              // Network[400]
@@ -269,83 +272,96 @@ function clampAddr(cell){
 const SVGNS="http://www.w3.org/2000/svg";
 function svgEl(name,attrs){const e=document.createElementNS(SVGNS,name);for(const k in attrs) e.setAttribute(k,attrs[k]);return e;}
 let netFlagsOnline=[0,0,0,0,0]; // 当前网络在线标志（用于上色）
+let allNetFlags=[];              // 每个网络的在线标志（扫描时填充，多网络视图用）
+let renderCtxNet=0;             // 当前正在绘制的网络索引（flagAt/dataAt 引用）
 
 function render(){
-  const svg=document.getElementById('netSvg');
+  const wrap=document.getElementById('netScroll');
+  wrap.innerHTML='';
+  wrap.style.height=(TOTAL_NETWORKS*NET_BLOCK_H)+'px';
+  const cw=document.getElementById('canvasWrap');
+  const scrollTop=cw.scrollTop;
+  const viewH=cw.clientHeight||400;
+  const first=Math.max(0,Math.floor(scrollTop/NET_BLOCK_H)-2);
+  const last=Math.min(TOTAL_NETWORKS-1,Math.ceil((scrollTop+viewH)/NET_BLOCK_H)+2);
+  for(let n=first;n<=last;n++){
+    const svg=renderNetSVG(n);
+    svg.classList.add('netBlk');
+    if(n===curNet) svg.classList.add('cur');
+    svg.style.top=(n*NET_BLOCK_H)+'px';
+    wrap.appendChild(svg);
+  }
+}
+
+// 渲染单个网络为 SVG 元素
+function renderNetSVG(n){
+  const svg=document.createElementNS(SVGNS,'svg');
   svg.setAttribute('width',NET_W+PAD*2);
   svg.setAttribute('height',NET_H+PAD*2+22);
   svg.setAttribute('viewBox',`0 0 ${NET_W+PAD*2} ${NET_H+PAD*2+22}`);
-  while(svg.firstChild) svg.removeChild(svg.firstChild);
+  svg.dataset.net=n;
+  renderCtxNet=n;
 
   const ox=PAD, oy=PAD;
-
   // 背景
   svg.appendChild(svgEl('rect',{x:ox,y:oy,width:NET_W,height:NET_H,fill:'#000'}));
-
   // 网格线
-  for(let r=0;r<=NET_ROWS;r++){
+  for(let r=0;r<=NET_ROWS;r++)
     svg.appendChild(svgEl('line',{x1:ox+RAIL,y1:oy+r*RH,x2:ox+NET_W,y2:oy+r*RH,stroke:'#1a2230','stroke-width':1}));
-  }
-  for(let c=0;c<=NET_COLUMNS;c++){
+  for(let c=0;c<=NET_COLUMNS;c++)
     svg.appendChild(svgEl('line',{x1:ox+RAIL+c*CW,y1:oy,x2:ox+RAIL+c*CW,y2:oy+NET_H,stroke:'#1a2230','stroke-width':1}));
-  }
-
   // 左母线（电源轨）
-  const railColor = running? '#22c55e' : '#3b4252';
+  const railColor=running?'#22c55e':'#3b4252';
   svg.appendChild(svgEl('rect',{x:ox,y:oy,width:RAIL,height:NET_H,fill:railColor}));
 
+  const net=program[n];
   // 单元格符号
-  const net=program[curNet];
   for(let c=0;c<NET_COLUMNS;c++){
     for(let r=0;r<NET_ROWS;r++){
       let code=net.Cells[r][c].Code;
       if(code===0) continue;
-      // 被多格指令占用的子格不重复画
-      if((code & CELL_USED_MASK) && ((code & CELL_CODE_MASK)!==0)){
-        // 这是某指令的后续格子，标记
-        continue;
-      }
+      if((code & CELL_USED_MASK) && ((code & CELL_CODE_MASK)!==0)) continue;
       drawInstruction(svg,net,r,c,ox,oy);
     }
   }
-
   // 垂直连接条
+  const flags=allNetFlags[n]||[0,0,0,0,0];
   for(let c=0;c<NET_COLUMNS-1;c++){
     for(let r=0;r<NET_ROWS-1;r++){
       if(net.Bars[c] & FlagsMask[r]){
-        const energized = (netFlagsOnline[c] & FlagsMask[r]) && running;
-        const col = energized? '#22c55e':'#6b7280';
+        const energized=(flags[c] & FlagsMask[r])&&running;
+        const col=energized?'#22c55e':'#6b7280';
         const x=ox+RAIL+(c+1)*CW-2;
         const y1=oy+r*RH+RH/2, y2=oy+(r+1)*RH+RH/2;
         svg.appendChild(svgEl('line',{x1:x,y1:y1,x2:x,y2:y2,stroke:col,'stroke-width':3}));
       }
     }
   }
-
-  // 选中框
-  if(selR>=0 && selC>=0){
+  // 选中框（仅当前网络）
+  if(n===curNet && selR>=0 && selC>=0){
     svg.appendChild(svgEl('rect',{x:ox+RAIL+selC*CW+1,y:oy+selR*RH+1,width:CW-2,height:RH-2,fill:'none',stroke:'#1f6feb','stroke-width':2,'stroke-dasharray':'4 2'}));
   }
-
   // 网络号标签
-  const t=svgEl('text',{x:ox,y:oy+NET_H+16,fill:'#8b98a5','font-size':11,'font-family':'monospace'});
-  t.textContent=`网络 ${curNet}  —  ${networkIsEmpty(net)?'(空)':'非空'}`;
+  const t=svgEl('text',{x:ox,y:oy+NET_H+16,fill:n===curNet?'#a8d5ff':'#8b98a5','font-size':11,'font-family':'monospace','font-weight':n===curNet?700:400});
+  t.textContent=`网络 ${n}  —  ${networkIsEmpty(net)?'(空)':'非空'}`;
   svg.appendChild(t);
-
-  // 网络号输入区点击层（用于选中单元格）
+  // 点击层
   const hit=svgEl('rect',{x:ox+RAIL,y:oy,width:NET_W-RAIL,height:NET_H,fill:'transparent',cursor:'pointer'});
   hit.addEventListener('click',onGridClick);
   svg.appendChild(hit);
+  return svg;
 }
 
-// 取该格的标志（输入电源）
+// 取该格的标志（输入电源）—— 基于正在绘制的网络
 function flagAt(r,c){
-  if(c===0) return running?1:0;
-  return (netFlagsOnline[c-1] & FlagsMask[r])?1:0;
+  if(!running) return 0;
+  if(c===0) return 1;
+  const flags=allNetFlags[renderCtxNet]||[0,0,0,0,0];
+  return (flags[c-1] & FlagsMask[r])?1:0;
 }
-// 取该格数据值（在线显示）
+// 取该格数据值（在线显示）—— 基于正在绘制的网络
 function dataAt(r,c){
-  return getDataValue(program[curNet],r,c);
+  return getDataValue(program[renderCtxNet],r,c);
 }
 
 function drawInstruction(svg,net,r,c,ox,oy){
@@ -571,9 +587,10 @@ function getPrevValue(net,r,c){
 function scanAll(){
   const flags=new Uint16Array(NET_COLUMNS-1);
   const now=performance.now();
+  allNetFlags=new Array(TOTAL_NETWORKS);
   for(let n=0;n<TOTAL_NETWORKS;n++){
     const net=program[n];
-    if(networkIsEmpty(net)) continue; // 跳过空网络以加速
+    if(networkIsEmpty(net)){allNetFlags[n]=[0,0,0,0,0];continue;} // 跳过空网络以加速
     flags.fill(0);
     for(let c=0;c<NET_COLUMNS;c++){
       for(let r=0;r<NET_ROWS;r++){
@@ -600,6 +617,7 @@ function scanAll(){
         }
       }
     }
+    allNetFlags[n]=[flags[0],flags[1],flags[2],flags[3]];
     if(n===curNet){
       for(let i=0;i<NET_COLUMNS-1;i++) netFlagsOnline[i]=flags[i];
     }
@@ -715,7 +733,10 @@ function execCounter(net,r,c,f,flags,up){
 //  UI：网格点击 / 调色板 / 编辑面板
 // =====================================================================
 function onGridClick(e){
-  const svg=document.getElementById('netSvg');
+  const svg=e.currentTarget.ownerSVGElement||e.currentTarget.closest('svg');
+  const netIdx=parseInt(svg.dataset.net);
+  // 点击的是其它网络时，切换 curNet 到该网络
+  if(netIdx!==curNet){curNet=netIdx;document.getElementById('netNum').textContent=curNet;selR=-1;selC=-1;}
   const rect=svg.getBoundingClientRect();
   const sx=(e.clientX-rect.left)-(PAD);
   const sy=(e.clientY-rect.top)-(PAD);
@@ -1256,7 +1277,19 @@ function loadDemo(){
 //  杂项
 // =====================================================================
 function status(msg){document.getElementById('statLeft').textContent=msg;}
-function gotoNet(n){curNet=Math.max(0,Math.min(TOTAL_NETWORKS-1,n));document.getElementById('netNum').textContent=curNet;selR=-1;selC=-1;netFlagsOnline.fill(0);render();buildPalette();updateSelLabel();document.getElementById('editPanel').classList.remove('show');}
+function gotoNet(n){
+  curNet=Math.max(0,Math.min(TOTAL_NETWORKS-1,n));
+  document.getElementById('netNum').textContent=curNet;
+  selR=-1;selC=-1;netFlagsOnline.fill(0);
+  render();buildPalette();updateSelLabel();
+  document.getElementById('editPanel').classList.remove('show');
+  // 滚动到目标网络
+  const cw=document.getElementById('canvasWrap');
+  const target=curNet*NET_BLOCK_H;
+  if(target<cw.scrollTop||target+NET_BLOCK_H>cw.scrollTop+cw.clientHeight){
+    cw.scrollTo({top:Math.max(0,target-20),behavior:'smooth'});
+  }
+}
 function showModal(html){document.getElementById('modalBox').innerHTML=html;document.getElementById('modalBg').classList.add('show');}
 function hideModal(){document.getElementById('modalBg').classList.remove('show');}
 
@@ -1288,6 +1321,14 @@ function init(){
   document.getElementById('btnAddNet').onclick=()=>insertNetwork();
   document.getElementById('btnDelNet').onclick=()=>deleteNetwork();
   document.getElementById('modalBg').onclick=e=>{if(e.target.id==='modalBg')hideModal();};
+  // 滚动时重绘可见网络（虚拟滚动）
+  let scrollT=null;
+  const cw=document.getElementById('canvasWrap');
+  cw.addEventListener('scroll',()=>{
+    if(scrollT)clearTimeout(scrollT);
+    scrollT=setTimeout(()=>render(),40);
+  },{passive:true});
+  window.addEventListener('resize',()=>{if(scrollT)clearTimeout(scrollT);scrollT=setTimeout(()=>render(),80);});
   document.addEventListener('keydown',e=>{
     if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
     if(e.key==='ArrowLeft')gotoNet(curNet-1);
