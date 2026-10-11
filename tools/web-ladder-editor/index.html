@@ -914,18 +914,18 @@ function openEditPanel(){
   panel.classList.add('show');
   // 填充类型按钮
   if(code>=NO&&code<=COILU){
-    fillTypes('typeRow',BOOL_TYPES,cell.Type,(t)=>{cell.Type=t;clampAddr(cell);openEditPanel();});
+    fillTypes('typeRow',BOOL_TYPES,cell.Type,(t)=>{cell.Type=t;clampAddr(cell);refreshAfterEdit();});
   } else if(code<=TP){
     fillBase('baseRow',cell);
   }
   if(code>=MOVE||code===NOT||(code>=SHL&&code<=ROR)){
     for(let i=0;i<INSTR_H[code];i++){
-      fillTypes('typeRow'+i,MENU_DATA_TYPES,net.Cells[selR+i][selC].Type,(t)=>{net.Cells[selR+i][selC].Type=t;clampAddr(net.Cells[selR+i][selC]);openEditPanel();});
+      fillTypes('typeRow'+i,MENU_DATA_TYPES,net.Cells[selR+i][selC].Type,(t)=>{net.Cells[selR+i][selC].Type=t;clampAddr(net.Cells[selR+i][selC]);refreshAfterEdit();});
     }
   }
   if(code>=EQ&&code<=NE){
     for(let i=0;i<2;i++){
-      fillTypes('typeRow'+i,MENU_DATA_TYPES,net.Cells[selR+i][selC].Type,(t)=>{net.Cells[selR+i][selC].Type=t;clampAddr(net.Cells[selR+i][selC]);openEditPanel();});
+      fillTypes('typeRow'+i,MENU_DATA_TYPES,net.Cells[selR+i][selC].Type,(t)=>{net.Cells[selR+i][selC].Type=t;clampAddr(net.Cells[selR+i][selC]);refreshAfterEdit();});
     }
   }
   updateEditPanelValues();
@@ -945,12 +945,14 @@ function fillBase(id,cell){
   TIMER_BASE_TIME.forEach((bt,i)=>{
     const b=document.createElement('button');b.textContent=TIMER_BASE_TEXT[i];
     if(param.Type===bt)b.classList.add('on');
-    b.onclick=()=>{param.Type=bt;openEditPanel();};row.appendChild(b);
+    b.onclick=()=>{param.Type=bt;refreshAfterEdit();};row.appendChild(b);
   });
 }
-function setAddr(){const cell=program[curNet].Cells[selR][selC];const v=parseInt(document.getElementById('addrInput').value);cell.Data=v;clampAddr(cell);openEditPanel();}
-function setSetpt(){const p=program[curNet].Cells[selR+1][selC];p.Data=parseInt(document.getElementById('setptInput').value)||0;openEditPanel();}
-function setAddr16(i){const cell=program[curNet].Cells[selR+i][selC];const v=parseInt(document.getElementById('addrInput'+i).value);cell.Data=v;clampAddr(cell);openEditPanel();}
+function setAddr(){const cell=program[curNet].Cells[selR][selC];const v=parseInt(document.getElementById('addrInput').value);cell.Data=v;clampAddr(cell);render();openEditPanel();}
+function setSetpt(){const p=program[curNet].Cells[selR+1][selC];p.Data=parseInt(document.getElementById('setptInput').value)||0;render();openEditPanel();}
+function setAddr16(i){const cell=program[curNet].Cells[selR+i][selC];const v=parseInt(document.getElementById('addrInput'+i).value);cell.Data=v;clampAddr(cell);render();openEditPanel();}
+// 修改单元格属性后统一刷新（面板 + 网格）
+function refreshAfterEdit(){render();openEditPanel();}
 function updateEditPanelValues(){
   if(selR<0||selC<0)return;
   const net=program[curNet],cell=net.Cells[selR][selC],code=cell.Code&CELL_CODE_MASK;
