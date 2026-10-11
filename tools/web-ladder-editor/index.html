@@ -49,10 +49,12 @@
   #paletteTabs button{flex:1;border:none;border-radius:0;background:transparent;color:var(--dim);padding:7px;font-size:12px}
   #paletteTabs button.active{background:var(--panel2);color:var(--cyan);border-bottom:2px solid var(--cyan)}
   #palette{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;padding:8px;overflow:auto;flex:1}
-  .ibtn{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:10px 6px;text-align:center;cursor:pointer;font-size:12px;font-weight:600;color:var(--txt);min-height:46px;display:flex;align-items:center;justify-content:center}
+  .ibtn{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 4px 8px;text-align:center;cursor:pointer;font-size:11px;font-weight:600;color:var(--txt);min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px}
   .ibtn:hover{border-color:#3a4658;background:#222d3d}
   .ibtn.sel{border-color:var(--green);background:#16291f;color:var(--green);box-shadow:0 0 0 1px var(--green) inset}
   .ibtn.bar{border-style:dashed}
+  .ibtn .sym{height:24px;display:flex;align-items:center;justify-content:center}
+  .ibtn .sym svg{display:block}
   .elements{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;padding:8px}
   .ebtn{background:#1b2230;border:1px solid var(--line);border-radius:6px;padding:8px 4px;text-align:center;cursor:pointer;font-size:11px;color:var(--txt)}
   .ebtn.col{background:#2a2118;border-color:#4a3a28}
@@ -777,6 +779,62 @@ function buildPaletteTabs(){
     wrap.appendChild(b);
   });
 }
+// 指令面板迷你符号（返回 SVG 字符串，统一 OFF 灰色 #9ca3af）
+function paletteSymbol(code){
+  const C='#9ca3af',SW=2; // 颜色、线宽
+  const mk=(w,h,inner)=>`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+  // 辅助：水平引线 + 触点两条竖线
+  const contact=(extra='')=>{
+    const w=44,h=22,cy=11,mx=22;
+    return mk(w,h,`<line x1="2" y1="${cy}" x2="${mx-5}" y2="${cy}" stroke="${C}" stroke-width="${SW}"/><line x1="${mx+5}" y1="${cy}" x2="${w-2}" y2="${cy}" stroke="${C}" stroke-width="${SW}"/><line x1="${mx-5}" y1="4" x2="${mx-5}" y2="18" stroke="${C}" stroke-width="${SW}"/><line x1="${mx+5}" y1="4" x2="${mx+5}" y2="18" stroke="${C}" stroke-width="${SW}"/>${extra}`);
+  };
+  // 辅助：水平引线 + 线圈括号
+  const coil=(extra='')=>{
+    const w=44,h=22,cy=11,mx=22,pr=7;
+    return mk(w,h,`<line x1="2" y1="${cy}" x2="${mx-pr-1}" y2="${cy}" stroke="${C}" stroke-width="${SW}"/><line x1="${mx+pr+1}" y1="${cy}" x2="${w-2}" y2="${cy}" stroke="${C}" stroke-width="${SW}"/><path d="M ${mx-pr} ${cy-pr} Q ${mx-pr-4} ${cy} ${mx-pr} ${cy+pr}" fill="none" stroke="${C}" stroke-width="${SW}"/><path d="M ${mx+pr} ${cy-pr} Q ${mx+pr+4} ${cy} ${mx+pr} ${cy+pr}" fill="none" stroke="${C}" stroke-width="${SW}"/>${extra}`);
+  };
+  // 辅助：盒型指令
+  const box=(label)=>mk(54,26,`<rect x="1" y="1" width="52" height="24" rx="3" fill="#0b1018" stroke="${C}" stroke-width="1.5"/><text x="27" y="16" text-anchor="middle" fill="${C}" font-size="9" font-family="monospace" font-weight="700">${label}</text>`);
+  switch(code){
+    case NO: return contact();
+    case NC: return contact(`<line x1="17" y1="18" x2="27" y2="4" stroke="${C}" stroke-width="${SW}"/>`);
+    case RE: return contact(`<text x="22" y="15" text-anchor="middle" fill="${C}" font-size="10" font-family="monospace" font-weight="700">P</text>`);
+    case FE: return contact(`<text x="22" y="15" text-anchor="middle" fill="${C}" font-size="10" font-family="monospace" font-weight="700">N</text>`);
+    case COIL: return coil();
+    case COILL: return coil(`<text x="22" y="15" text-anchor="middle" fill="${C}" font-size="10" font-family="monospace" font-weight="700">L</text>`);
+    case COILU: return coil(`<text x="22" y="15" text-anchor="middle" fill="${C}" font-size="10" font-family="monospace" font-weight="700">U</text>`);
+    case NEG: { const w=44,h=22,cy=11,mx=22; return mk(w,h,`<line x1="2" y1="${cy}" x2="${mx-5}" y2="${cy}" stroke="${C}" stroke-width="${SW}"/><circle cx="${mx}" cy="${cy}" r="4" fill="#000" stroke="${C}" stroke-width="${SW}"/><line x1="${mx+5}" y1="${cy}" x2="${w-2}" y2="${cy}" stroke="${C}" stroke-width="${SW}"/>`); }
+    case CONN: { const w=44,h=22,cy=11; return mk(w,h,`<line x1="2" y1="${cy}" x2="${w-2}" y2="${cy}" stroke="${C}" stroke-width="${SW}"/>`); }
+    case BAR_MNEMONIC_CODE: { const w=44,h=22; return mk(w,h,`<line x1="22" y1="2" x2="22" y2="20" stroke="${C}" stroke-width="${SW}"/>`); }
+    case TON: return box('TON');
+    case TOFF: return box('TOFF');
+    case TP: return box('TP');
+    case CTU: return box('CTU');
+    case CTD: return box('CTD');
+    case MOVE: return box('MOVE');
+    case ADD: return box('ADD');
+    case SUB: return box('SUB');
+    case MUL: return box('MUL');
+    case DIV: return box('DIV');
+    case MOD: return box('MOD');
+    case AND: return box('AND');
+    case OR: return box('OR');
+    case XOR: return box('XOR');
+    case NOT: return box('NOT');
+    case SHL: return box('SHL');
+    case SHR: return box('SHR');
+    case ROL: return box('ROL');
+    case ROR: return box('ROR');
+    case EQ: return box('=');
+    case GT: return box('>');
+    case GE: return box('>=');
+    case LT: return box('<');
+    case LE: return box('<=');
+    case NE: return box('<>');
+    default: return mk(20,20,'');
+  }
+}
+
 function buildPalette(){
   const wrap=document.getElementById('palette');
   wrap.innerHTML='';
@@ -788,17 +846,22 @@ function buildPalette(){
     const code=items[i];
     const b=document.createElement('div');
     b.className='ibtn';
+    let label;
     if(code===BAR_MNEMONIC_CODE){
       b.classList.add('bar');
-      b.textContent='BAR';
+      label='BAR';
       b.title='垂直连接条（在选中格切换）';
       if(selR>=0 && selC<NET_COLUMNS-1 && (program[curNet].Bars[selC]&FlagsMask[selR])) b.classList.add('sel');
     } else if(code===NOPP){
-      b.textContent='NOP';
+      label='NOP';
       b.title='空操作（清除该格）';
     } else {
-      b.textContent=MNEMONIC_CODES[code];
+      label=MNEMONIC_CODES[code];
     }
+    // 符号内已含标识文字（盒型指令名称、RE/FE的P/N、线圈L/U）的不再重复显示标签
+    const isRealCode=code!==BAR_MNEMONIC_CODE&&code!==NOPP;
+    const noLabel=isRealCode&&(code>=TON||(code>=MOVE&&code<=ROR)||code===NOT||(code>=EQ&&code<=NE)||code===RE||code===FE||code===COILL||code===COILU);
+    b.innerHTML=noLabel?`<div class="sym">${paletteSymbol(code)}</div>`:`<div class="sym">${paletteSymbol(code)}</div><div>${label}</div>`;
     b.onclick=()=>onPalettePick(code);
     wrap.appendChild(b);
   }
