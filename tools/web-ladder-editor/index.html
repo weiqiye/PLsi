@@ -416,25 +416,13 @@ function drawInstruction(svg,net,r,c,ox,oy){
     if(code===NC){
       svg.appendChild(svgEl('line',{x1:mx-5,y1:my+9,x2:mx+5,y2:my-9,stroke:col,'stroke-width':2}));
     }
-    // RE 上升沿：触点中央画粗大的向上箭头 + P 标识（三菱 P 型）
+    // RE 上升沿：两条竖线中间放 P 字母（三菱 P 型触点 |P|）
     else if(code===RE){
-      // 箭头杆（从下往上）
-      svg.appendChild(svgEl('line',{x1:mx,y1:my+7,x2:mx,y2:my-3,stroke:col,'stroke-width':3}));
-      // 箭头头部（大三角，顶点朝上伸出触点）
-      const ap=`${mx-8},${my-3} ${mx+8},${my-3} ${mx},${my-14} Z`;
-      svg.appendChild(svgEl('polygon',{points:ap,fill:col,stroke:col,'stroke-width':1}));
-      // P 标识在右上角
-      addText(svg,mx+4,y0+3,'P',col,8,'monospace');
+      addText(svg,mx-4,my+4,'P',col,13,'monospace');
     }
-    // FE 下降沿：触点中央画粗大的向下箭头 + N 标识（三菱 N 型）
+    // FE 下降沿：两条竖线中间放 N 字母（三菱 N 型触点 |N|）
     else if(code===FE){
-      // 箭头杆（从上往下）
-      svg.appendChild(svgEl('line',{x1:mx,y1:my-7,x2:mx,y2:my+3,stroke:col,'stroke-width':3}));
-      // 箭头头部（大三角，顶点朝下伸出触点）
-      const ap=`${mx-8},${my+3} ${mx+8},${my+3} ${mx},${my+14} Z`;
-      svg.appendChild(svgEl('polygon',{points:ap,fill:col,stroke:col,'stroke-width':1}));
-      // N 标识在右下角
-      addText(svg,mx+4,y0+RH-4,'N',col,8,'monospace');
+      addText(svg,mx-4,my+4,'N',col,13,'monospace');
     }
     // 元件地址标签（在触点上方）
     addText(svg,x0+2,y0+3,tag(),'#e6edf3',9,'monospace');
