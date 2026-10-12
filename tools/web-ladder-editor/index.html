@@ -25,19 +25,46 @@
   ::-webkit-scrollbar-thumb:active{background:#0066cc}
   ::-webkit-scrollbar-corner{background:transparent}
   body{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:13px;display:flex;flex-direction:column;overflow:hidden;padding-bottom:24px;align-items:center}
-  header{background:linear-gradient(180deg,#111318,#090a0f);border-bottom:1px solid var(--line);width:100%}
-  .header-row{display:flex;align-items:center;gap:8px;padding:6px max(10px,calc((100vw - 1000px)/2));flex-wrap:wrap}
-  .brand{display:flex;align-items:center;gap:6px;background:#090a0f;border:1px solid var(--line);border-radius:6px;padding:3px 8px}
-  .brand .name{font-weight:800;font-size:14px;color:#e6edf3;letter-spacing:.5px}
+  header{background:linear-gradient(180deg,#111318,#090a0f);border-bottom:1px solid var(--line);width:100%;flex-shrink:0}
+  .header-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px max(10px,calc((100vw - 1000px)/2));height:46px;flex-wrap:nowrap;overflow-x:auto}
+  /* 左区：品牌+项目信息 */
+  .hd-left{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .brand{display:flex;align-items:center;gap:8px;background:#090a0f;border:1px solid var(--line);border-radius:8px;padding:5px 10px}
+  .brand .pulse-dot{width:10px;height:10px;border-radius:50%;background:var(--blue);box-shadow:0 0 8px var(--blue);animation:pulse 1.8s infinite}
+  .brand .name{font-weight:800;font-size:14px;color:#fff;letter-spacing:.5px;display:flex;align-items:center;gap:5px}
   .brand .name b{color:var(--cyan)}
-  .brand .ver{font-size:9px;font-weight:700;color:#38bdf8;background:#0b1220;border:1px solid #1d3a5f;border-radius:4px;padding:1px 5px;letter-spacing:.5px}
-  .prog-name{background:#0d141d;border:1px solid var(--line);color:var(--txt);padding:4px 8px;border-radius:4px;font-size:12px;width:120px}
-  .cpu-badge{display:flex;align-items:center;gap:5px;background:#090a0f;border:1px solid var(--line);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--dim)}
-  .cpu-badge .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 6px var(--amber)}
-  .cpu-badge.run{color:var(--green)}
-  .cpu-badge.run .dot{background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 1.5s infinite}
+  .brand .ver{font-size:9px;font-weight:700;color:#60a5fa;background:rgba(30,58,138,.4);border:1px solid rgba(37,99,235,.5);border-radius:4px;padding:1px 5px;letter-spacing:.5px}
+  .proj-name{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--dim)}
+  .proj-name .fname{font-weight:500;color:var(--txt);background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:2px 8px;cursor:pointer}
+  .proj-name .fname:hover{border-color:#3a4258}
+  .cpu-badge{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--amber);background:rgba(120,53,15,.2);border:1px solid rgba(180,83,9,.4);border-radius:4px;padding:2px 8px}
+  .cpu-badge .dot{width:7px;height:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 5px var(--amber)}
+  .cpu-badge.run{color:var(--green);background:rgba(20,83,45,.2);border-color:rgba(34,197,94,.4)}
+  .cpu-badge.run .dot{background:var(--green);box-shadow:0 0 5px var(--green);animation:pulse 1.5s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
-  .toolbar{display:flex;align-items:center;gap:3px;flex-wrap:nowrap}
+  /* 中区：分组工具栏 */
+  .hd-center{display:flex;align-items:center;gap:1px;background:rgba(9,10,15,.8);border:1px solid var(--panel3);border-radius:8px;padding:3px;flex-shrink:0}
+  .grp{display:flex;align-items:center;gap:1px;padding:0 4px}
+  .grp+.grp{border-left:1px solid var(--panel3)}
+  .icon-btn{background:transparent;border:none;color:var(--dim);padding:5px 6px;border-radius:5px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:4px;transition:all .15s}
+  .icon-btn:hover{color:#fff;background:var(--panel2)}
+  .icon-btn.danger{color:#f87171}
+  .icon-btn.danger:hover{color:#fca5a5;background:rgba(127,29,29,.2)}
+  .icon-btn svg{width:15px;height:15px;fill:currentColor;stroke:currentColor;flex-shrink:0}
+  .run-btn{display:flex;align-items:center;gap:5px;background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;cursor:pointer;font-size:11px;font-weight:600;transition:all .15s;box-shadow:0 2px 8px rgba(20,83,45,.3)}
+  .run-btn:hover{background:#16a34a}
+  .run-btn svg{width:11px;height:11px;fill:currentColor}
+  .run-btn.running{background:var(--amber);box-shadow:0 2px 8px rgba(120,53,15,.3)}
+  .run-btn.running:hover{background:#d97706}
+  .prog-name{background:#0d141d;border:1px solid var(--line);color:var(--cyan);padding:4px 8px;border-radius:4px;font-size:12px;width:110px;font-family:var(--mono)}
+  .grp-label{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;padding:0 2px}
+  /* 右区：工具 */
+  .hd-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+  .util-btn{display:flex;align-items:center;gap:5px;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:5px;padding:5px 10px;cursor:pointer;font-size:11px;transition:all .15s}
+  .util-btn:hover{background:var(--panel3);border-color:#3a4258}
+  .util-btn svg{width:13px;height:13px;fill:currentColor;stroke:currentColor;flex-shrink:0}
+  .util-btn .blue{color:#60a5fa}
+  /* 通用按钮（侧栏等仍用） */
   button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);padding:4px 8px;border-radius:4px;cursor:pointer;font-size:12px;white-space:nowrap}
   button:hover{border-color:#3a4258;background:var(--panel3)}
   button:active{transform:translateY(1px)}
@@ -46,7 +73,6 @@
   button.danger{background:#3a1d1d;border-color:#5a2828;color:#fca5a5}
   button.toggle.on{background:#14281d;border-color:#2a5a3a;color:var(--green)}
   .sep{width:1px;height:20px;background:var(--line);margin:0 2px}
-  .grp-label{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-right:2px;align-self:center}
   /* 三栏主区：左指令库 / 中画布 / 右检查器 */
   #main{flex:1;display:grid;grid-template-columns:260px 1fr 300px;overflow:hidden;max-width:1000px;width:100%;margin:0 auto}
   /* 左：指令库 */
@@ -165,27 +191,61 @@
 <body>
 <header>
   <div class="header-row">
-    <div class="brand">
-      <span class="name">P<b>L</b>si</span>
-      <span class="ver">PRO v3.2</span>
+    <!-- 左区：品牌 + 项目信息 -->
+    <div class="hd-left">
+      <div class="brand">
+        <span class="pulse-dot"></span>
+        <span class="name">P<b>L</b>si <span class="ver">PRO v3.2</span></span>
+      </div>
+      <div class="proj-name">
+        <span class="fname" id="projName">PROGRAM_1.plsi</span>
+        <span class="cpu-badge" id="cpuStatus"><span class="dot"></span><span id="cpuText">STOPPED</span></span>
+      </div>
     </div>
-    <div class="cpu-badge" id="cpuStatus"><span class="dot"></span><span id="cpuText">STOPPED</span></div>
-    <div class="sep"></div>
-    <div class="toolbar">
-      <span class="grp-label">文件</span>
-      <button id="btnNew" title="新建空程序">新建</button>
-      <button id="btnDemo" title="加载示例程序">示例</button>
-      <button id="btnImport" title="导入 .plsi 或 .json">导入</button>
-      <button id="btnExportBin" class="primary" title="导出固件可加载的 .plsi 二进制">导出 .plsi</button>
-      <button id="btnExportJson" title="导出 JSON">导出 JSON</button>
-      <button id="btnListing" title="生成助记符程序清单">程序清单</button>
-      <div class="sep"></div>
-      <span class="grp-label">编辑</span>
-      <input type="text" class="prog-name" id="progName" value="PROGRAM_1" title="程序名称">
-      <div class="sep"></div>
-      <span class="grp-label">仿真</span>
-      <button id="btnRun" class="toggle" title="运行/停止 模拟扫描">▶ 运行</button>
-      <button id="btnStep" title="单步扫描一次">单步</button>
+    <!-- 中区：分组工具栏 -->
+    <div class="hd-center">
+      <!-- 文件组 -->
+      <div class="grp">
+        <button class="icon-btn" id="btnNew" title="新建 (New)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6M9 15h6" stroke-linecap="round"/></svg>
+        </button>
+        <button class="icon-btn" id="btnDemo" title="示例 (Demo)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        </button>
+        <button class="icon-btn" id="btnImport" title="导入 (Import)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 10v6M9 13l3 3 3-3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="icon-btn" id="btnExportBin" title="导出 .plsi (Export Binary)" style="color:#a8d5ff">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h14l-2 5H7z"/><path d="M7 9v11h10V9"/><path d="M10 13h4M10 16h4" stroke-linecap="round"/></svg>
+        </button>
+        <button class="icon-btn" id="btnExportJson" title="导出 JSON (Export JSON)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13l2 2-2 2M13 17h2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="icon-btn" id="btnListing" title="程序清单 (Listing)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8M8 9h2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <!-- 编辑组 -->
+      <div class="grp">
+        <input type="text" class="prog-name" id="progName" value="PROGRAM_1" title="程序名称">
+      </div>
+      <!-- 仿真组 -->
+      <div class="grp">
+        <button class="run-btn" id="btnRun" title="运行/停止 模拟扫描">
+          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          <span id="runStopText">RUN 仿真</span>
+        </button>
+        <button class="icon-btn" id="btnStep" title="单步执行 (Step)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4l10 8-10 8z" stroke-linejoin="round"/><rect x="17" y="4" width="3" height="16"/></svg>
+        </button>
+      </div>
+    </div>
+    <!-- 右区：工具 -->
+    <div class="hd-right">
+      <button class="util-btn" id="btnListing2" title="指令列表/二进制">
+        <svg class="blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>指令列表/二进制</span>
+      </button>
     </div>
   </div>
 </header>
@@ -1429,8 +1489,18 @@ function updateIOPanel(){
 function setRun(state){
   running=state;
   const btn=document.getElementById('btnRun');
-  if(running){btn.classList.add('on');btn.textContent='⏸ 停止';startScanLoop();}
-  else{btn.classList.remove('on');btn.textContent='▶ 运行';stopScanLoop();netFlagsOnline.fill(0);}
+  const txt=document.getElementById('runStopText');
+  if(running){
+    btn.classList.add('running');
+    txt.textContent='STOP 停止';
+    btn.querySelector('svg').innerHTML='<rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/>';
+    startScanLoop();
+  }else{
+    btn.classList.remove('running');
+    txt.textContent='RUN 仿真';
+    btn.querySelector('svg').innerHTML='<path d="M8 5v14l11-7z"/>';
+    stopScanLoop();netFlagsOnline.fill(0);
+  }
   updateStateBadge();
   render();
   showToast(running?'PLC 已运行':'PLC 已停止',running?'success':'info');
@@ -1535,12 +1605,17 @@ function init(){
   document.getElementById('btnExportBin').onclick=exportPlsi;
   document.getElementById('btnExportJson').onclick=exportJson;
   document.getElementById('btnListing').onclick=()=>{showModal('<h3>程序清单</h3><textarea readonly>'+generateListing()+'</textarea><div class="btns"><button onclick="hideModal()">关闭</button></div>');};
+  document.getElementById('btnListing2').onclick=()=>{showModal('<h3>程序清单</h3><textarea readonly>'+generateListing()+'</textarea><div class="btns"><button onclick="hideModal()">关闭</button></div>');};
   document.getElementById('btnRun').onclick=()=>setRun(!running);
   document.getElementById('btnStep').onclick=()=>{scanAll();render();updateIOPanel();updateEditPanelValues();updatePropsPanel();status('单步扫描完成');showToast('单步扫描完成','info');};
   document.getElementById('btnPrevNet').onclick=()=>gotoNet(curNet-1);
   document.getElementById('btnNextNet').onclick=()=>gotoNet(curNet+1);
   document.getElementById('btnAddNet').onclick=()=>insertNetwork();
   document.getElementById('btnDelNet').onclick=()=>deleteNetwork();
+  // 同步项目名显示
+  const pn=document.getElementById('progName');
+  const pnd=document.getElementById('projName');
+  if(pn&&pnd){pn.addEventListener('input',()=>{pnd.textContent=(pn.value||'PROGRAM')+'.plsi';});}
   document.getElementById('btnZoomIn').onclick=()=>setZoom(zoomLevel+0.15);
   document.getElementById('btnZoomOut').onclick=()=>setZoom(zoomLevel-0.15);
   document.querySelectorAll('.insp-tabs button').forEach(b=>b.onclick=()=>switchInspectorTab(b.dataset.pane));

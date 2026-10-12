@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PLsi Web Ladder Editor - Industrial Studio Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        industrial: {
+                            950: '#090a0f',
+                            900: '#111318',
+                            850: '#161922',
+                            800: '#1e222d',
+                            700: '#2a2f3d',
+                            600: '#3f475c',
+                            500: '#5c6682',
+                            400: '#8c97b5',
+                            300: '#b4c0de',
+                            200: '#d7e1fc',
+                            100: '#ebf1ff',
+                        },
+                        plc: {
+                            blue: '#0066cc',
+                            blueHover: '#0052a3',
+                            active: '#22c55e',
+                            power: '#eab308',
+                            rail: '#94a3b8',
+                            wire: '#38bdf8',
+                            wireActive: '#4ade80'
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Courier New', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+            overflow: hidden;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111318;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a2f3d;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3f475c;
+        }
+        /* Ladder Canvas Grid Background */
+        .ladder-grid {
+            background-image: 
+                linear-gradient(to right, rgba(42, 47, 61, 0.3) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(42, 47, 61, 0.3) 1px, transparent 1px);
+            background-size: 80px 80px;
+        }
+        .glow-active {
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+        }
+        .glow-power {
+            box-shadow: 0 0 10px rgba(234, 179, 8, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-industrial-950 text-industrial-200 h-screen flex flex-col antialiased">
+
+    <header class="bg-industrial-900 border-b border-industrial-700 h-14 flex items-center justify-between px-4 z-30 select-none shrink-0 shadow-lg">
+        <!-- Brand & Project Info -->
+        <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2.5 bg-industrial-950 px-3 py-1.5 rounded-lg border border-industrial-700">
+                <div class="w-3 h-3 rounded-full bg-plc-blue animate-pulse"></div>
+                <span class="font-bold text-white tracking-wider text-sm flex items-center gap-1.5">
+                    PLSI <span class="text-xs px-1.5 py-0.5 rounded bg-blue-900/50 text-blue-400 border border-blue-700/50">PRO v3.2</span>
+                </span>
+            </div>
+            <div class="h-5 w-[1px] bg-industrial-700 hidden sm:block"></div>
+            <div class="hidden md:flex items-center space-x-2 text-xs text-industrial-400">
+                <span id="projectName" class="font-medium text-industrial-200 bg-industrial-800 px-2.5 py-1 rounded border border-industrial-700 cursor-pointer hover:border-industrial-500 transition">Main_Station.plc</span>
+                <span id="cpuStatusBadge" class="flex items-center gap-1 text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/50">
+                    <i class="fa-solid fa-circle text-[8px]"></i> RUNNING
+                </span>
+            </div>
+        </div>
+
+        <!-- Central Action Toolbar (Grouped & Collapsible) -->
+        <div class="flex items-center space-x-1.5 bg-industrial-950/80 p-1 rounded-lg border border-industrial-800">
+            <!-- File Group -->
+            <div class="flex items-center space-x-1 px-1 border-r border-industrial-800">
+                <button onclick="app.newProject()" title="新建工程 (New)" class="p-1.5 text-industrial-300 hover:text-white hover:bg-industrial-800 rounded transition"><i class="fa-solid fa-file-circle-plus"></i></button>
+                <button onclick="app.triggerImport()" title="导入工程 (Import)" class="p-1.5 text-industrial-300 hover:text-white hover:bg-industrial-800 rounded transition"><i class="fa-solid fa-folder-open"></i></button>
+                <button onclick="app.exportProject()" title="导出工程 (Export)" class="p-1.5 text-industrial-300 hover:text-white hover:bg-industrial-800 rounded transition"><i class="fa-solid fa-floppy-disk"></i></button>
+            </div>
+            <!-- Edit Group -->
+            <div class="flex items-center space-x-1 px-1 border-r border-industrial-800">
+                <button onclick="app.undo()" title="撤销 (Undo)" class="p-1.5 text-industrial-300 hover:text-white hover:bg-industrial-800 rounded transition"><i class="fa-solid fa-rotate-left"></i></button>
+                <button onclick="app.redo()" title="重做 (Redo)" class="p-1.5 text-industrial-300 hover:text-white hover:bg-industrial-800 rounded transition"><i class="fa-solid fa-rotate-right"></i></button>
+                <button onclick="app.clearLadder()" title="清空画板 (Clear)" class="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-industrial-800 rounded transition"><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+            <!-- Simulation & Control Group -->
+            <div class="flex items-center space-x-1 px-1">
+                <button id="btnRunStop" onclick="app.toggleRunMode()" class="flex items-center space-x-1.5 px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition shadow-md shadow-emerald-900/30">
+                    <i class="fa-solid fa-play text-[10px]"></i>
+                    <span id="runStopText">RUN 仿真</span>
+                </button>
+                <button onclick="app.stepSimulation()" title="单步执行 (Step)" class="p-1.5 text-industrial-300 hover:text-white hover:bg-industrial-800 rounded transition"><i class="fa-solid fa-shoe-prints"></i></button>
+                <button onclick="app.resetSimulation()" title="重置PLC (Reset)" class="p-1.5 text-amber-400 hover:text-amber-300 hover:bg-industrial-800 rounded transition"><i class="fa-solid fa-power-off"></i></button>
+            </div>
+        </div>
+
+        <!-- Right Utilities & View Toggles -->
+        <div class="flex items-center space-x-2">
+            <button onclick="app.showBinaryModal()" title="二进制编译码 (Binary / Assembly)" class="px-2.5 py-1.5 bg-industrial-800 hover:bg-industrial-700 text-industrial-200 rounded text-xs border border-industrial-700 flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-code text-blue-400"></i>
+                <span class="hidden lg:inline">指令列表/二进制</span>
+            </button>
+            <button onclick="app.toggleSidebar()" title="切换侧边栏" class="p-2 bg-industrial-800 hover:bg-industrial-700 text-industrial-200 rounded border border-industrial-700 transition">
+                <i class="fa-solid fa-sliders"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- Left Instruction Toolbox (Collapsible & Categorized) -->
+        <aside id="instructionSidebar" class="w-64 bg-industrial-900 border-r border-industrial-700 flex flex-col z-20 transition-all duration-300 shrink-0">
+            <div class="px-3 py-2.5 border-b border-industrial-700 flex items-center justify-between bg-industrial-850">
+                <span class="text-xs font-semibold uppercase tracking-wider text-industrial-400 flex items-center gap-2">
+                    <i class="fa-solid fa-toolbox text-blue-400"></i> 指令与元件库
+                </span>
+                <span class="text-[10px] bg-industrial-800 px-2 py-0.5 rounded text-industrial-400 border border-industrial-700">拖拽或点击</span>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-3 space-y-4">
+                <!-- Contacts Group -->
+                <div>
+                    <div class="text-[11px] font-bold text-industrial-400 uppercase tracking-wider mb-2 px-1 flex items-center justify-between">
+                        <span>基本触点 (Contacts)</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div onclick="app.selectTool('NO')" class="tool-card group cursor-pointer bg-industrial-850 hover:bg-industrial-800 border border-industrial-700 hover:border-blue-500 p-2.5 rounded-lg flex flex-col items-center text-center transition shadow-sm">
+                            <div class="text-blue-400 text-lg mb-1 group-hover:scale-110 transition">┤ ├</div>
+                            <span class="text-xs font-medium text-industrial-200">常开触点</span>
+                            <span class="text-[9px] text-industrial-500 font-mono">LD / AND</span>
+                        </div>
+                        <div onclick="app.selectTool('NC')" class="tool-card group cursor-pointer bg-industrial-850 hover:bg-industrial-800 border border-industrial-700 hover:border-blue-500 p-2.5 rounded-lg flex flex-col items-center text-center transition shadow-sm">
+                            <div class="text-blue-400 text-lg mb-1 group-hover:scale-110 transition">┤/├</div>
+                            <span class="text-xs font-medium text-industrial-200">常闭触点</span>
+                            <span class="text-[9px] text-industrial-500 font-mono">LDI / ANI</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Coils Group -->
+                <div>
+                    <div class="text-[11px] font-bold text-industrial-400 uppercase tracking-wider mb-2 px-1">
+                        <span>线圈与输出 (Coils)</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div onclick="app.selectTool('OUT')" class="tool-card group cursor-pointer bg-industrial-850 hover:bg-industrial-800 border border-industrial-700 hover:border-blue-500 p-2.5 rounded-lg flex flex-col items-center text-center transition shadow-sm">
+                            <div class="text-amber-400 text-lg mb-1 group-hover:scale-110 transition">( )</div>
+                            <span class="text-xs font-medium text-industrial-200">输出线圈</span>
+                            <span class="text-[9px] text-industrial-500 font-mono">OUT</span>
+                        </div>
+                        <div onclick="app.selectTool('SET')" class="tool-card group cursor-pointer bg-industrial-850 hover:bg-industrial-800 border border-industrial-700 hover:border-blue-500 p-2.5 rounded-lg flex flex-col items-center text-center transition shadow-sm">
+                            <div class="text-amber-400 text-lg mb-1 group-hover:scale-110 transition">(S)</div>
+                            <span class="text-xs font-medium text-industrial-200">置位(SET)</span>
+                            <span class="text-[9px] text-industrial-500 font-mono">SET</span>
+                        </div>
+                        <div onclick="app.selectTool('RST')" class="tool-card group cursor-pointer bg-industrial-850 hover:bg-industrial-800 border border-industrial-700 hover:border-blue-500 p-2.5 rounded-lg flex flex-col items-center text-center transition shadow-sm">
+                            <div class="text-rose-400 text-lg mb-1 group-hover:scale-110 transition">(R)</div>
+                            <span class="text-xs font-medium text-industrial-200">复位(RST)</span>
+                            <span class="text-[9px] text-industrial-500 font-mono">RST</span>
+                        </div>
+                        <div onclick="app.selectTool('PLS')" class="tool-card group cursor-pointer bg-industrial-850 hover:bg-industrial-800 border border-industrial-700 hover:border-blue-500 p-2.5 rounded-lg flex flex-col items-center text-center transition shadow-sm">
+                            <div class="text-emerald-400 text-lg mb-1 group-hover:scale-110 transition">(P)</div>
+                            <span class="text-xs font-medium text-industrial-200">上升沿脉冲</span>
+                            <span class="text-[9px] text-industrial-500 font-mono">PLS</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timers & Counters Group -->
+                <div>
+                    <div class="text-[11px] font-bold text-industrial-400 uppercase tracking-wider mb-2 px-1">
+                        <span>定时器与计数器</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div onclick="app.selectTool('TON')" class="tool-card group cursor-pointer bg-industrial-850 hover:bg-industrial-800 border border-industrial-700 hover:border-blue-500 p-2.5 rounded-lg flex flex-col items-center text-center transition shadow-sm">
+                            <div class="text-purple-400 text-xs font-mono font-bold mb-1.5 group-hover:scale-110 transition">[TON]</div>
+                            <span class="text-xs font-medium text-industrial-200">通电延时</span>
+                            <span class="text-[9px] text-industrial-500 font-mono">TON</span>
+                        </div>
+                        <div onclick="app.selectTool('CTU')" class="tool-card group cursor-pointer bg-industrial-850 hover:bg-industrial-800 border border-industrial-700 hover:border-blue-500 p-2.5 rounded-lg flex flex-col items-center text-center transition shadow-sm">
+                            <div class="text-purple-400 text-xs font-mono font-bold mb-1.5 group-hover:scale-110 transition">[CTU]</div>
+                            <span class="text-xs font-medium text-industrial-200">增计数器</span>
+                            <span class="text-[9px] text-industrial-500 font-mono">CTU</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Advanced & Math Group -->
+                <div>
+                    <div class="text-[11px] font-bold text-industrial-400 uppercase tracking-wider mb-2 px-1">
+                        <span>高级与算术运算</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div onclick="app.selectTool('ADD')" class="tool-card group cursor-pointer bg-industrial-850 hover:bg-industrial-800 border border-industrial-700 hover:border-blue-500 p-2.5 rounded-lg flex flex-col items-center text-center transition shadow-sm">
+                            <div class="text-cyan-400 text-xs font-mono font-bold mb-1.5 group-hover:scale-110 transition">[ + ]</div>
+                            <span class="text-xs font-medium text-industrial-200">加法运算</span>
+                            <span class="text-[9px] text-industrial-500 font-mono">ADD</span>
+                        </div>
+                        <div onclick="app.selectTool('MOV')" class="tool-card group cursor-pointer bg-industrial-850 hover:bg-industrial-800 border border-industrial-700 hover:border-blue-500 p-2.5 rounded-lg flex flex-col items-center text-center transition shadow-sm">
+                            <div class="text-cyan-400 text-xs font-mono font-bold mb-1.5 group-hover:scale-110 transition">[MOV]</div>
+                            <span class="text-xs font-medium text-industrial-200">数据传送</span>
+                            <span class="text-[9px] text-industrial-500 font-mono">MOV</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Wiring & Editing Tools -->
+                <div>
+                    <div class="text-[11px] font-bold text-industrial-400 uppercase tracking-wider mb-2 px-1">
+                        <span>连线与编辑工具</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div onclick="app.selectTool('WIRE')" class="tool-card group cursor-pointer bg-industrial-850 hover:bg-industrial-800 border border-industrial-700 hover:border-blue-500 p-2.5 rounded-lg flex flex-col items-center text-center transition shadow-sm">
+                            <div class="text-emerald-400 text-lg mb-1 group-hover:scale-110 transition">──</div>
+                            <span class="text-xs font-medium text-industrial-200">水平连线</span>
+                            <span class="text-[9px] text-industrial-500 font-mono">WIRE</span>
+                        </div>
+                        <div onclick="app.selectTool('ERASE')" class="tool-card group cursor-pointer bg-industrial-850 hover:bg-industrial-800 border border-industrial-700 hover:border-rose-500 p-2.5 rounded-lg flex flex-col items-center text-center transition shadow-sm">
+                            <div class="text-rose-400 text-lg mb-1 group-hover:scale-110 transition"><i class="fa-solid fa-eraser"></i></div>
+                            <span class="text-xs font-medium text-industrial-200">删除元件</span>
+                            <span class="text-[9px] text-industrial-500 font-mono">ERASE</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Active Tool Indicator Footer -->
+            <div class="p-3 bg-industrial-950 border-t border-industrial-700 text-xs flex items-center justify-between">
+                <span class="text-industrial-400">当前工具:</span>
+                <span id="activeToolName" class="font-bold text-blue-400 bg-blue-950/60 px-2 py-0.5 rounded border border-blue-800/50 font-mono">常开触点 (NO)</span>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col bg-industrial-950 overflow-hidden relative">
+            <!-- Canvas Toolbar (Zoom, Grid adjustment, Add Rungs) -->
+            <div class="h-11 bg-industrial-900 border-b border-industrial-700 flex items-center justify-between px-4 z-10 shrink-0">
+                <div class="flex items-center space-x-3 text-xs text-industrial-300">
+                    <span class="flex items-center gap-1.5 font-medium text-white"><i class="fa-solid fa-network-wired text-blue-400"></i> 梯形图主控逻辑区 (Ladder Diagram)</span>
+                    <span class="bg-industrial-800 px-2 py-0.5 rounded border border-industrial-700 text-[11px]" id="rungsCountInfo">网络总数: 5</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="app.addRung()" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-medium flex items-center gap-1.5 transition shadow-sm">
+                        <i class="fa-solid fa-plus text-[10px]"></i> 插入网络 (Rung)
+                    </button>
+                    <div class="h-4 w-[1px] bg-industrial-700"></div>
+                    <button onclick="app.zoomIn()" title="放大" class="p-1.5 bg-industrial-800 hover:bg-industrial-700 text-industrial-200 rounded transition"><i class="fa-solid fa-magnifying-glass-plus text-xs"></i></button>
+                    <button onclick="app.zoomOut()" title="缩小" class="p-1.5 bg-industrial-800 hover:bg-industrial-700 text-industrial-200 rounded transition"><i class="fa-solid fa-magnifying-glass-minus text-xs"></i></button>
+                </div>
+            </div>
+
+            <!-- Virtual Scrolling Ladder Drawing Area -->
+            <div id="ladderScrollContainer" class="flex-1 overflow-auto ladder-grid p-6 relative focus:outline-none" tabindex="0">
+                <div id="ladderWorkspace" class="max-w-5xl mx-auto space-y-6 pb-24 transition-transform duration-150 origin-top-left">
+                    <!-- Dynamic Rungs Rendered Here -->
+                </div>
+            </div>
+
+            <!-- Bottom Floating Status Bar -->
+            <div class="h-8 bg-industrial-900 border-t border-industrial-700 px-4 flex items-center justify-between text-[11px] text-industrial-400 z-10 shrink-0">
+                <div class="flex items-center space-x-4">
+                    <span id="plcCycleStatus" class="flex items-center gap-1.5 text-emerald-400 font-mono">
+                        <i class="fa-solid fa-bolt text-[10px]"></i> 循环周期: <span id="scanTime">2.4</span> ms
+                    </span>
+                    <span>|</span>
+                    <span id="cursorPosLabel" class="font-mono text-industrial-300">就绪. 点击网格节点进行编辑</span>
+                </div>
+                <div class="flex items-center space-x-3 font-mono">
+                    <span class="text-industrial-500">PLsi Core v3.2.0</span>
+                    <span class="text-blue-400 font-bold" id="memoryUsage">MEM: 14.2%</span>
+                </div>
+            </div>
+        </main>
+
+        <aside id="inspectorSidebar" class="w-80 bg-industrial-900 border-l border-industrial-700 flex flex-col z-25 transition-all duration-300 shrink-0 shadow-2xl">
+            <!-- Panel Header Tabs -->
+            <div class="flex border-b border-industrial-700 bg-industrial-850">
+                <button onclick="app.switchTab('properties')" id="tabBtnProperties" class="flex-1 py-2.5 text-xs font-semibold text-blue-400 border-b-2 border-blue-500 bg-industrial-900 transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-sliders"></i> 属性编辑
+                </button>
+                <button onclick="app.switchTab('io')" id="tabBtnIo" class="flex-1 py-2.5 text-xs font-semibold text-industrial-400 hover:text-industrial-200 transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-microchip"></i> I/O 虚拟调试台
+                </button>
+            </div>
+
+            <!-- Tab Content: Property Editor -->
+            <div id="tabContentProperties" class="flex-1 overflow-y-auto p-4 space-y-4">
+                <div class="bg-industrial-850 p-3 rounded-lg border border-industrial-700">
+                    <div class="text-xs font-bold text-industrial-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                        <i class="fa-solid fa-cube text-blue-400"></i> 选中元件参数
+                    </div>
+                    <div id="emptyInspector" class="text-center py-8 text-industrial-500 text-xs">
+                        <i class="fa-solid fa-hand-pointer text-2xl mb-2 block opacity-40"></i>
+                        请在梯形图中点击选中任意元件以编辑属性
+                    </div>
+                    <div id="activeInspectorForm" class="space-y-3 hidden">
+                        <div>
+                            <label class="block text-[11px] font-medium text-industrial-400 mb-1">元件类型 (Type)</label>
+                            <input type="text" id="propType" disabled class="w-full bg-industrial-900 border border-industrial-700 rounded px-2.5 py-1.5 text-xs text-industrial-400 font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-industrial-400 mb-1">变量地址 / 标签 (Symbol / Address)</label>
+                            <input type="text" id="propSymbol" oninput="app.updateSelectedSymbol(this.value)" class="w-full bg-industrial-900 border border-industrial-700 focus:border-blue-500 rounded px-2.5 py-1.5 text-xs text-white font-mono focus:outline-none">
+                        </div>
+                        <div id="propExtraContainer" class="space-y-3">
+                            <!-- Dynamic extras like Timer Preset or Constant Value -->
+                        </div>
+                        <div class="pt-2 border-t border-industrial-700 flex justify-between">
+                            <button onclick="app.deleteSelectedNode()" class="px-3 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs rounded border border-rose-800/50 transition flex items-center gap-1">
+                                <i class="fa-solid fa-trash text-[10px]"></i> 删除元件
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Global Symbol Table Summary -->
+                <div class="bg-industrial-850 p-3 rounded-lg border border-industrial-700">
+                    <div class="text-xs font-bold text-industrial-300 uppercase tracking-wider mb-2 flex items-center justify-between">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-table text-emerald-400"></i> 全局符号表 (Symbol Table)</span>
+                        <span class="text-[10px] text-industrial-500">I/O & Memory</span>
+                    </div>
+                    <div id="symbolTableList" class="space-y-1.5 max-h-48 overflow-y-auto text-xs font-mono">
+                        <!-- Dynamic symbol rows -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: I/O Simulation Panel -->
+            <div id="tabContentIo" class="flex-1 overflow-y-auto p-4 space-y-4 hidden">
+                <div class="bg-industrial-850 p-3 rounded-lg border border-industrial-700">
+                    <div class="text-xs font-bold text-industrial-300 uppercase tracking-wider mb-2 flex items-center justify-between">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-toggle-on text-emerald-400"></i> 物理输入点 (Inputs)</span>
+                        <span class="text-[10px] text-industrial-500">Click to Toggle</span>
+                    </div>
+                    <div id="inputsSimList" class="grid grid-cols-2 gap-2">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+
+                <div class="bg-industrial-850 p-3 rounded-lg border border-industrial-700">
+                    <div class="text-xs font-bold text-industrial-300 uppercase tracking-wider mb-2 flex items-center justify-between">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-lightbulb text-amber-400"></i> 物理输出点 (Outputs)</span>
+                        <span class="text-[10px] text-industrial-500">Real-time status</span>
+                    </div>
+                    <div id="outputsSimList" class="grid grid-cols-2 gap-2">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+
+                <div class="bg-industrial-850 p-3 rounded-lg border border-industrial-700">
+                    <div class="text-xs font-bold text-industrial-300 uppercase tracking-wider mb-2">
+                        <span>内部寄存器 / 定时器 (M/T/C Registers)</span>
+                    </div>
+                    <div id="registersSimList" class="space-y-1.5 max-h-40 overflow-y-auto text-xs font-mono">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <div id="binaryModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-industrial-900 border border-industrial-700 w-full max-w-2xl rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="px-5 py-3.5 bg-industrial-850 border-b border-industrial-700 flex items-center justify-between">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-microchip text-blue-400"></i> PLC 汇编指令与二进制编码映射表 (Instruction List & Binary)
+                </h3>
+                <button onclick="app.closeBinaryModal()" class="text-industrial-400 hover:text-white p-1 rounded transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 flex-1 overflow-y-auto max-h-[60vh] space-y-4">
+                <p class="text-xs text-industrial-400 leading-relaxed">
+                    下方为当前梯形图自动编译生成的标准 PLC 指令列表 (IL) 及其模拟底层机器码。支持一键复制与离线烧录验证。
+                </p>
+                <div class="bg-industrial-950 p-4 rounded-lg border border-industrial-800 font-mono text-xs text-emerald-400 overflow-x-auto">
+                    <pre id="compiledAssemblyCode">LD X0\nAND X1\nOUT Y0</pre>
+                </div>
+            </div>
+            <div class="px-5 py-3 bg-industrial-850 border-t border-industrial-700 flex justify-end space-x-3">
+                <button onclick="app.copyAssemblyCode()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-medium transition shadow-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-copy"></i> 复制代码
+                </button>
+                <button onclick="app.closeBinaryModal()" class="px-4 py-2 bg-industrial-800 hover:bg-industrial-700 text-industrial-200 rounded text-xs font-medium transition">
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="fixed bottom-10 right-8 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <script>
+        /**
+         * PLsi Professional Ladder Editor & PLC Core Engine
+         */
+        class PLsiEditor {
+            constructor() {
+                // Active tool selected in toolbox
+                this.currentTool = 'NO';
+                
+                // Zoom level for canvas
+                this.zoomLevel = 1.0;
+
+                // Active inspector tab ('properties' or 'io')
+                this.activeTab = 'properties';
+
+                // Selected node reference for property editing { rungIndex, colIndex }
+                this.selectedNodeCoord = null;
+
+                // PLC Run Mode State ('STOP' or 'RUN')
+                this.isRunning = false;
+                this.simulationInterval = null;
+
+                // PLC Memory / States
+                this.inputs = {
+                    'X0': false, 'X1': false, 'X2': false, 'X3': false,
+                    'X4': false, 'X5': false, 'X6': false, 'X7': false
+                };
+                this.outputs = {
+                    'Y0': false, 'Y1': false, 'Y2': false, 'Y3': false
+                };
+                this.memory = {
+                    'M0': false, 'M1': false, 'M2': false
+                };
+                this.timers = {
+                    'T0': { current: 0, preset: 50, active: false, done: false }
+                };
+                this.counters = {
+                    'C0': { current: 0, preset: 10, done: false }
+                };
+                this.registers = {
+                    'D0': 100, 'D1': 25
+                };
+
+                // Default Ladder Rungs (5 columns per rung)
+                this.rungs = [
+                    {
+                        id: 1,
+                        nodes: [
+                            { type: 'NO', symbol: 'X0', powered: false },
+                            { type: 'NO', symbol: 'X1', powered: false },
+                            { type: 'WIRE', symbol: '', powered: false },
+                            { type: 'WIRE', symbol: '', powered: false },
+                            { type: 'OUT', symbol: 'Y0', powered: false }
+                        ]
+                    },
+                    {
+                        id: 2,
+                        nodes: [
+                            { type: 'NC', symbol: 'X2', powered: false },
+                            { type: 'TON', symbol: 'T0', preset: 30, current: 0, powered: false },
+                            { type: 'WIRE', symbol: '', powered: false },
+                            { type: 'WIRE', symbol: '', powered: false },
+                            { type: 'OUT', symbol: 'Y1', powered: false }
+                        ]
+                    },
+                    {
+                        id: 3,
+                        nodes: [
+                            { type: 'NO', symbol: 'Y0', powered: false },
+                            { type: 'SET', symbol: 'M0', powered: false },
+                            { type: 'WIRE', symbol: '', powered: false },
+                            { type: 'WIRE', symbol: '', powered: false },
+                            { type: 'OUT', symbol: 'Y2', powered: false }
+                        ]
+                    },
+                    {
+                        id: 4,
+                        nodes: [
+                            { type: 'CTU', symbol: 'C0', preset: 5, current: 0, powered: false },
+                            { type: 'WIRE', symbol: '', powered: false },
+                            { type: 'WIRE', symbol: '', powered: false },
+                            { type: 'WIRE', symbol: '', powered: false },
+                            { type: 'OUT', symbol: 'Y3', powered: false }
+                        ]
+                    },
+                    {
+                        id: 5,
+                        nodes: [
+                            { type: 'ADD', symbol: 'D0', val1: 'D0', val2: 1, dest: 'D0', powered: false },
+                            { type: 'WIRE', symbol: '', powered: false },
+                            { type: 'WIRE', symbol: '', powered: false },
+                            { type: 'WIRE', symbol: '', powered: false },
+                            { type: 'MOV', symbol: 'D1', source: 10, dest: 'D2', powered: false }
+                        ]
+                    }
+                ];
+
+                this.history = [];
+                this.redoStack = [];
+
+                this.init();
+            }
+
+            init() {
+                this.renderLadder();
+                this.renderIOSimulation();
+                this.renderSymbolTable();
+                this.updateToolSelectionUI();
+                this.setupKeyboardShortcuts();
+            }
+
+            // --- Tool & Selection Management ---
+            selectTool(toolType) {
+                this.currentTool = toolType;
+                this.updateToolSelectionUI();
+                const toolNames = {
+                    'NO': '常开触点 (NO)', 'NC': '常闭触点 (NC)', 'OUT': '输出线圈 (OUT)',
+                    'SET': '置位线圈 (SET)', 'RST': '复位线圈 (RST)', 'PLS': '上升沿脉冲 (PLS)',
+                    'TON': '通电延时定时器 (TON)', 'CTU': '增计数器 (CTU)',
+                    'ADD': '加法运算 (ADD)', 'MOV': '数据传送 (MOV)',
+                    'WIRE': '水平连线 (WIRE)', 'ERASE': '删除元件 (ERASE)'
+                };
+                this.showToast(`已切换工具: ${toolNames[toolType] || toolType}`, 'info');
+            }
+
+            updateToolSelectionUI() {
+                document.querySelectorAll('.tool-card').cardEl?.forEach?.(el => {});
+                document.getElementById('activeToolName').innerText = this.currentTool;
+            }
+
+            switchTab(tabName) {
+                this.activeTab = tabName;
+                const propBtn = document.getElementById('tabBtnProperties');
+                const ioBtn = document.getElementById('tabBtnIo');
+                const propContent = document.getElementById('tabContentProperties');
+                const ioContent = document.getElementById('tabContentIo');
+
+                if (tabName === 'properties') {
+                    propBtn.className = "flex-1 py-2.5 text-xs font-semibold text-blue-400 border-b-2 border-blue-500 bg-industrial-900 transition flex items-center justify-center gap-1.5";
+                    ioBtn.className = "flex-1 py-2.5 text-xs font-semibold text-industrial-400 hover:text-industrial-200 transition flex items-center justify-center gap-1.5";
+                    propContent.classList.remove('hidden');
+                    ioContent.classList.add('hidden');
+                } else {
+                    ioBtn.className = "flex-1 py-2.5 text-xs font-semibold text-blue-400 border-b-2 border-blue-500 bg-industrial-900 transition flex items-center justify-center gap-1.5";
+                    propBtn.className = "flex-1 py-2.5 text-xs font-semibold text-industrial-400 hover:text-industrial-200 transition flex items-center justify-center gap-1.5";
+                    ioContent.classList.remove('hidden');
+                    propContent.classList.add('hidden');
+                }
+            }
+
+            toggleSidebar() {
+                const sidebar = document.getElementById('instructionSidebar');
+                sidebar.classList.toggle('hidden');
+            }
+
+            // --- Ladder Rendering Engine ---
+            renderLadder() {
+                const container = document.getElementById('ladderWorkspace');
+                container.innerHTML = '';
+                document.getElementById('rungsCountInfo').innerText = `网络总数: ${this.rungs.length}`;
+
+                this.rungs.forEach((rung, rIdx) => {
+                    const rungEl = document.createElement('div');
+                    rungEl.className = `bg-industrial-900 border ${this.selectedNodeCoord && this.selectedNodeCoord.rungIndex === rIdx ? 'border-blue-500 shadow-md shadow-blue-950/40' : 'border-industrial-800'} rounded-xl p-4 transition-all relative group`;
+                    
+                    // Rung Header
+                    const headerHtml = `
+                        <div class="flex items-center justify-between mb-3 pb-2 border-b border-industrial-800 text-xs">
+                            <span class="font-mono font-bold text-industrial-400 flex items-center gap-2">
+                                <span class="text-blue-400">NETWORK ${rIdx + 1}</span>
+                                <span class="text-[10px] text-industrial-500 font-normal">#Rung_${rung.id}</span>
+                            </span>
+                            <div class="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition">
+                                <button onclick="app.moveRungUp(${rIdx})" title="上移" class="text-industrial-400 hover:text-white"><i class="fa-solid fa-arrow-up"></i></button>
+                                <button onclick="app.moveRungDown(${rIdx})" title="下移" class="text-industrial-400 hover:text-white"><i class="fa-solid fa-arrow-down"></i></button>
+                                <button onclick="app.deleteRung(${rIdx})" title="删除网络" class="text-rose-400 hover:text-rose-300"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>
+                    `;
+
+                    // Rung Grid Nodes (Left Power Rail -> 5 Nodes -> Right Power Rail)
+                    let nodesHtml = '<div class="flex items-center justify-between space-x-2 overflow-x-auto py-2">';
+                    
+                    // Left Power Rail
+                    nodesHtml += `<div class="w-3 h-12 bg-industrial-600 rounded-sm flex items-center justify-center ${this.isRunning ? 'bg-amber-400 glow-power' : ''}" title="Power Rail L"></div>`;
+
+                    rung.nodes.forEach((node, cIdx) => {
+                        nodesHtml += `<div class="flex-1 flex items-center justify-center">`;
+                        nodesHtml += this.renderNodeCard(node, rIdx, cIdx);
+                        nodesHtml += `</div>`;
+                        if (cIdx < rung.nodes.length - 1) {
+                            // Wire connector
+                            nodesHtml += `<div class="h-1 flex-1 ${node.powered ? 'bg-emerald-400 glow-active' : 'bg-industrial-700'} transition-colors duration-200"></div>`;
+                        }
+                    });
+
+                    // Right Power Rail
+                    nodesHtml += `<div class="w-3 h-12 bg-industrial-600 rounded-sm flex items-center justify-center ${this.isRunning ? 'bg-amber-400 glow-power' : ''}" title="Power Rail N"></div>`;
+                    nodesHtml += '</div>';
+
+                    rungEl.innerHTML = headerHtml + nodesHtml;
+                    container.appendChild(rungEl);
+                });
+            }
+
+            renderNodeCard(node, rIdx, cIdx) {
+                const isSelected = this.selectedNodeCoord && this.selectedNodeCoord.rungIndex === rIdx && this.selectedNodeCoord.colIndex === cIdx;
+                const activeClass = node.powered ? 'border-emerald-500 bg-emerald-950/30 text-emerald-300 glow-active' : 'border-industrial-700 bg-industrial-850 text-industrial-200';
+                const selectedClass = isSelected ? 'ring-2 ring-blue-500 border-blue-500' : 'hover:border-industrial-500';
+
+                let symbolText = node.symbol || '---';
+                let graphic = '';
+
+                switch(node.type) {
+                    case 'NO':
+                        graphic = `<div class="font-mono text-sm font-bold tracking-widest ${node.powered ? 'text-emerald-400' : 'text-blue-400'}">┤ ├</div>`;
+                        break;
+                    case 'NC':
+                        graphic = `<div class="font-mono text-sm font-bold tracking-widest ${node.powered ? 'text-emerald-400' : 'text-blue-400'}">┤/├</div>`;
+                        break;
+                    case 'OUT':
+                        graphic = `<div class="font-mono text-sm font-bold tracking-widest ${node.powered ? 'text-amber-400' : 'text-amber-500'}">( )</div>`;
+                        break;
+                    case 'SET':
+                        graphic = `<div class="font-mono text-xs font-bold tracking-wider text-amber-400">(S)</div>`;
+                        break;
+                    case 'RST':
+                        graphic = `<div class="font-mono text-xs font-bold tracking-wider text-rose-400">(R)</div>`;
+                        break;
+                    case 'PLS':
+                        graphic = `<div class="font-mono text-xs font-bold tracking-wider text-emerald-400">(P)</div>`;
+                        break;
+                    case 'TON':
+                        graphic = `<div class="font-mono text-[10px] font-bold text-purple-400 bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-800">TON</div>`;
+                        break;
+                    case 'CTU':
+                        graphic = `<div class="font-mono text-[10px] font-bold text-purple-400 bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-800">CTU</div>`;
+                        break;
+                    case 'ADD':
+                        graphic = `<div class="font-mono text-[10px] font-bold text-cyan-400 bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800">+ ADD</div>`;
+                        break;
+                    case 'MOV':
+                        graphic = `<div class="font-mono text-[10px] font-bold text-cyan-400 bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800">MOV</div>`;
+                        break;
+                    case 'WIRE':
+                        graphic = `<div class="font-mono text-xs text-industrial-600">──</div>`;
+                        symbolText = '';
+                        break;
+                    default:
+                        graphic = `<div class="text-xs text-industrial-500">[Empty]</div>`;
+                }
+
+                return `
+                    <div onclick="app.onNodeClick(${rIdx}, ${cIdx})" class="w-24 h-16 rounded-lg border ${activeClass} ${selectedClass} flex flex-col items-center justify-center p-1.5 cursor-pointer transition shadow-sm">
+                        ${graphic}
+                        <span class="text-[10px] font-mono mt-1 text-industrial-300 truncate w-full text-center">${symbolText}</span>
+                    </div>
+                `;
+            }
+
+            onNodeClick(rIdx, cIdx) {
+                if (this.currentTool === 'ERASE') {
+                    this.rungs[rIdx].nodes[cIdx] = { type: 'WIRE', symbol: '', powered: false };
+                    this.renderLadder();
+                    this.showToast('元件已清除', 'info');
+                    return;
+                }
+
+                if (this.currentTool === 'WIRE') {
+                    this.rungs[rIdx].nodes[cIdx] = { type: 'WIRE', symbol: '', powered: false };
+                    this.renderLadder();
+                    return;
+                }
+
+                // Place or modify node
+                let defaultSymbol = 'X0';
+                if (['OUT', 'SET', 'RST'].includes(this.currentTool)) defaultSymbol = 'Y0';
+                if (this.currentTool === 'TON') defaultSymbol = 'T0';
+                if (this.currentTool === 'CTU') defaultSymbol = 'C0';
+                if (['ADD', 'MOV'].includes(this.currentTool)) defaultSymbol = 'D0';
+
+                const existing = this.rungs[rIdx].nodes[cIdx];
+                this.rungs[rIdx].nodes[cIdx] = {
+                    type: this.currentTool,
+                    symbol: existing.symbol || defaultSymbol,
+                    powered: false,
+                    preset: existing.preset || 50,
+                    current: 0
+                };
+
+                this.selectedNodeCoord = { rungIndex: rIdx, colIndex: cIdx };
+                this.renderLadder();
+                this.updateInspectorPanel();
+            }
+
+            updateInspectorPanel() {
+                if (!this.selectedNodeCoord) return;
+                const { rungIndex, colIndex } = this.selectedNodeCoord;
+                const node = this.rungs[rungIndex].nodes[colIndex];
+
+                document.getElementById('emptyInspector').classList.add('hidden');
+                document.getElementById('activeInspectorForm').classList.remove('hidden');
+
+                document.getElementById('propType').value = node.type;
+                document.getElementById('propSymbol').value = node.symbol;
+
+                const extraContainer = document.getElementById('propExtraContainer');
+                extraContainer.innerHTML = '';
+
+                if (node.type === 'TON' || node.type === 'CTU') {
+                    extraContainer.innerHTML = `
+                        <div>
+                            <label class="block text-[11px] font-medium text-industrial-400 mb-1">设定值 (Preset Value)</label>
+                            <input type="number" id="propPreset" value="${node.preset || 50}" oninput="app.updateSelectedPreset(this.value)" class="w-full bg-industrial-900 border border-industrial-700 focus:border-blue-500 rounded px-2.5 py-1.5 text-xs text-white font-mono focus:outline-none">
+                        </div>
+                    `;
+                }
+            }
+
+            updateSelectedSymbol(val) {
+                if (!this.selectedNodeCoord) return;
+                const { rungIndex, colIndex } = this.selectedNodeCoord;
+                this.rungs[rungIndex].nodes[colIndex].symbol = val;
+                this.renderLadder();
+                this.renderSymbolTable();
+            }
+
+            updateSelectedPreset(val) {
+                if (!this.selectedNodeCoord) return;
+                const { rungIndex, colIndex } = this.selectedNodeCoord;
+                this.rungs[rungIndex].nodes[colIndex].preset = parseInt(val) || 0;
+            }
+
+            deleteSelectedNode() {
+                if (!this.selectedNodeCoord) return;
+                const { rungIndex, colIndex } = this.selectedNodeCoord;
+                this.rungs[rungIndex].nodes[colIndex] = { type: 'WIRE', symbol: '', powered: false };
+                this.selectedNodeCoord = null;
+                document.getElementById('emptyInspector').classList.remove('hidden');
+                document.getElementById('activeInspectorForm').classList.add('hidden');
+                this.renderLadder();
+                this.showToast('元件已删除', 'info');
+            }
+
+            // --- Rung Management ---
+            addRung() {
+                const newId = this.rungs.length + 1;
+                this.rungs.push({
+                    id: newId,
+                    nodes: [
+                        { type: 'WIRE', symbol: '', powered: false },
+                        { type: 'WIRE', symbol: '', powered: false },
+                        { type: 'WIRE', symbol: '', powered: false },
+                        { type: 'WIRE', symbol: '', powered: false },
+                        { type: 'OUT', symbol: 'Y0', powered: false }
+                    ]
+                });
+                this.renderLadder();
+                this.showToast('已成功插入新网络', 'info');
+            }
+
+            deleteRung(rIdx) {
+                if (this.rungs.length <= 1) {
+                    this.showToast('保留至少一个网络', 'error');
+                    return;
+                }
+                this.rungs.splice(rIdx, 1);
+                this.selectedNodeCoord = null;
+                this.renderLadder();
+                this.showToast('网络已删除', 'info');
+            }
+
+            moveRungUp(rIdx) {
+                if (rIdx <= 0) return;
+                const temp = this.rungs[rIdx];
+                this.rungs[rIdx] = this.rungs[rIdx - 1];
+                this.rungs[rIdx - 1] = temp;
+                this.renderLadder();
+            }
+
+            moveRungDown(rIdx) {
+                if (rIdx >= this.rungs.length - 1) return;
+                const temp = this.rungs[rIdx];
+                this.rungs[rIdx] = this.rungs[rIdx + 1];
+                this.rungs[rIdx + 1] = temp;
+                this.renderLadder();
+            }
+
+            // --- PLC Simulation Engine ---
+            toggleRunMode() {
+                this.isRunning = !this.isRunning;
+                const btn = document.getElementById('btnRunStop');
+                const badge = document.getElementById('cpuStatusBadge');
+                const text = document.getElementById('runStopText');
+
+                if (this.isRunning) {
+                    btn.className = "flex items-center space-x-1.5 px-3 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white font-medium text-xs transition shadow-md shadow-amber-900/30";
+                    text.innerText = "STOP 停止";
+                    badge.className = "flex items-center gap-1 text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/50";
+                    badge.innerHTML = `<i class="fa-solid fa-circle text-[8px] animate-ping"></i> RUNNING`;
+                    
+                    // Start PLC scan cycle interval (100ms)
+                    this.simulationInterval = setInterval(() => this.runPlcCycle(), 100);
+                    this.showToast('PLC 仿真器已启动 (RUN Mode)', 'success');
+                } else {
+                    btn.className = "flex items-center space-x-1.5 px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition shadow-md shadow-emerald-900/30";
+                    text.innerText = "RUN 仿真";
+                    badge.className = "flex items-center gap-1 text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/50";
+                    badge.innerHTML = `<i class="fa-solid fa-circle text-[8px]"></i> STOPPED`;
+                    
+                    clearInterval(this.simulationInterval);
+                    this.resetPowerFlow();
+                    this.showToast('PLC 仿真器已停止 (STOP Mode)', 'info');
+                }
+                this.renderLadder();
+            }
+
+            runPlcCycle() {
+                // Evaluate Rungs power flow
+                this.rungs.forEach(rung => {
+                    let powerFlow = true; // Power Rail Left
+
+                    rung.nodes.forEach(node => {
+                        if (node.type === 'WIRE') return;
+
+                        if (node.type === 'NO') {
+                            const state = this.getInputOrMemoryState(node.symbol);
+                            node.powered = powerFlow && state;
+                            powerFlow = node.powered;
+                        } else if (node.type === 'NC') {
+                            const state = this.getInputOrMemoryState(node.symbol);
+                            node.powered = powerFlow && !state;
+                            powerFlow = node.powered;
+                        } else if (node.type === 'OUT') {
+                            node.powered = powerFlow;
+                            if (node.symbol.startsWith('Y')) {
+                                this.outputs[node.symbol] = powerFlow;
+                            } else if (node.symbol.startsWith('M')) {
+                                this.memory[node.symbol] = powerFlow;
+                            }
+                        } else if (node.type === 'SET') {
+                            if (powerFlow) {
+                                if (node.symbol.startsWith('M')) this.memory[node.symbol] = true;
+                                if (node.symbol.startsWith('Y')) this.outputs[node.symbol] = true;
+                            }
+                            node.powered = powerFlow;
+                        } else if (node.type === 'RST') {
+                            if (powerFlow) {
+                                if (node.symbol.startsWith('M')) this.memory[node.symbol] = false;
+                                if (node.symbol.startsWith('Y')) this.outputs[node.symbol] = false;
+                            }
+                            node.powered = powerFlow;
+                        } else if (node.type === 'TON') {
+                            const t = this.timers[node.symbol] || { current: 0, preset: node.preset || 50, done: false };
+                            if (powerFlow) {
+                                if (t.current < t.preset) t.current += 1;
+                                t.done = t.current >= t.preset;
+                            } else {
+                                t.current = 0;
+                                t.done = false;
+                            }
+                            this.timers[node.symbol] = t;
+                            node.powered = t.done;
+                        } else if (node.type === 'CTU') {
+                            const c = this.counters[node.symbol] || { current: 0, preset: node.preset || 10, done: false };
+                            // Rising edge simulation simplified
+                            if (powerFlow && !c._prevPower) {
+                                if (c.current < c.preset) c.current += 1;
+                                c.done = c.current >= c.preset;
+                            }
+                            c._prevPower = powerFlow;
+                            this.counters[node.symbol] = c;
+                            node.powered = c.done;
+                        } else if (node.type === 'ADD') {
+                            if (powerFlow) {
+                                this.registers[node.symbol] = (this.registers[node.symbol] || 0) + 1;
+                            }
+                            node.powered = powerFlow;
+                        } else if (node.type === 'MOV') {
+                            if (powerFlow) {
+                                this.registers['D2'] = this.registers['D1'] || 10;
+                            }
+                            node.powered = powerFlow;
+                        }
+                    });
+                });
+
+                this.renderLadder();
+                this.renderIOSimulation();
+            }
+
+            getInputOrMemoryState(symbol) {
+                if (symbol.startsWith('X')) return !!this.inputs[symbol];
+                if (symbol.startsWith('Y')) return !!this.outputs[symbol];
+                if (symbol.startsWith('M')) return !!this.memory[symbol];
+                if (symbol.startsWith('T')) return this.timers[symbol]?.done || false;
+                if (symbol.startsWith('C')) return this.counters[symbol]?.done || false;
+                return false;
+            }
+
+            stepSimulation() {
+                this.runPlcCycle();
+                this.showToast('已完成单步扫描周期', 'info');
+            }
+
+            resetSimulation() {
+                this.resetPowerFlow();
+                this.inputs = { 'X0': false, 'X1': false, 'X2': false, 'X3': false, 'X4': false, 'X5': false, 'X6': false, 'X7': false };
+                this.outputs = { 'Y0': false, 'Y1': false, 'Y2': false, 'Y3': false };
+                this.memory = { 'M0': false, 'M1': false, 'M2': false };
+                this.renderLadder();
+                this.renderIOSimulation();
+                this.showToast('PLC 状态已重置', 'success');
+            }
+
+            resetPowerFlow() {
+                this.rungs.forEach(rung => rung.nodes.forEach(n => n.powered = false));
+            }
+
+            // --- I/O Simulation UI Rendering ---
+            renderIOSimulation() {
+                // Inputs
+                const inputsContainer = document.getElementById('inputsSimList');
+                inputsContainer.innerHTML = '';
+                Object.keys(this.inputs).forEach(key => {
+                    const active = this.inputs[key];
+                    inputsContainer.innerHTML += `
+                        <button onclick="app.toggleInput('${key}')" class="p-2 rounded border ${active ? 'bg-emerald-900/50 border-emerald-500 text-emerald-300 shadow-sm shadow-emerald-900/40' : 'bg-industrial-900 border-industrial-700 text-industrial-400 hover:border-industrial-500'} flex items-center justify-between font-mono text-xs transition">
+                            <span>${key}</span>
+                            <span class="w-2.5 h-2.5 rounded-full ${active ? 'bg-emerald-400 animate-pulse' : 'bg-industrial-700'}"></span>
+                        </button>
+                    `;
+                });
+
+                // Outputs
+                const outputsContainer = document.getElementById('outputsSimList');
+                outputsContainer.innerHTML = '';
+                Object.keys(this.outputs).forEach(key => {
+                    const active = this.outputs[key];
+                    outputsContainer.innerHTML += `
+                        <div class="p-2 rounded border ${active ? 'bg-amber-900/50 border-amber-500 text-amber-300 shadow-sm shadow-amber-900/40' : 'bg-industrial-900 border-industrial-700 text-industrial-400'} flex items-center justify-between font-mono text-xs">
+                            <span>${key}</span>
+                            <span class="w-2.5 h-2.5 rounded-full ${active ? 'bg-amber-400 glow-power' : 'bg-industrial-700'}"></span>
+                        </div>
+                    `;
+                });
+
+                // Registers
+                const regContainer = document.getElementById('registersSimList');
+                regContainer.innerHTML = '';
+                Object.keys(this.registers).forEach(key => {
+                    regContainer.innerHTML += `
+                        <div class="flex items-center justify-between bg-industrial-900 px-2.5 py-1.5 rounded border border-industrial-700">
+                            <span class="text-industrial-400">${key}</span>
+                            <span class="text-blue-400 font-bold">${this.registers[key]}</span>
+                        </div>
+                    `;
+                });
+            }
+
+            toggleInput(key) {
+                this.inputs[key] = !this.inputs[key];
+                this.renderIOSimulation();
+                if (!this.isRunning) {
+                    this.runPlcCycle();
+                }
+            }
+
+            renderSymbolTable() {
+                const list = document.getElementById('symbolTableList');
+                list.innerHTML = `
+                    <div class="flex justify-between text-industrial-500 border-b border-industrial-800 pb-1 mb-1">
+                        <span>Address</span><span>Type</span>
+                    </div>
+                    <div class="flex justify-between text-industrial-300"><span>X0-X7</span><span class="text-emerald-400">Digital IN</span></div>
+                    <div class="flex justify-between text-industrial-300"><span>Y0-Y3</span><span class="text-amber-400">Digital OUT</span></div>
+                    <div class="flex justify-between text-industrial-300"><span>M0-M2</span><span class="text-blue-400">Memory</span></div>
+                    <div class="flex justify-between text-industrial-300"><span>D0-D2</span><span class="text-cyan-400">Data Reg</span></div>
+                `;
+            }
+
+            // --- Binary & Assembly Compilation Modal ---
+            showBinaryModal() {
+                let assembly = '; --- PLsi Auto Compiled Instruction List (IL) ---\n';
+                this.rungs.forEach((rung, idx) => {
+                    assembly += `\nNETWORK ${idx + 1}\n`;
+                    rung.nodes.forEach(node => {
+                        if (node.type !== 'WIRE') {
+                            assembly += `  ${node.type.padEnd(5, ' ')} ${node.symbol || ''}\n`;
+                        }
+                    });
+                });
+                document.getElementById('compiledAssemblyCode').innerText = assembly;
+                document.getElementById('binaryModal').classList.remove('hidden');
+            }
+
+            closeBinaryModal() {
+                document.getElementById('binaryModal').classList.add('hidden');
+            }
+
+            copyAssemblyCode() {
+                const code = document.getElementById('compiledAssemblyCode').innerText;
+                const textarea = document.createElement('textarea');
+                textarea.value = code;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    this.showToast('汇编代码已成功复制到剪贴板', 'success');
+                } catch (e) {
+                    this.showToast('复制失败', 'error');
+                }
+                document.body.removeChild(textarea);
+            }
+
+            // --- Project Actions ---
+            newProject() {
+                if (confirm('确定要新建工程吗？当前未保存的修改将会丢失。')) {
+                    this.rungs = [
+                        {
+                            id: 1,
+                            nodes: [
+                                { type: 'NO', symbol: 'X0', powered: false },
+                                { type: 'WIRE', symbol: '', powered: false },
+                                { type: 'WIRE', symbol: '', powered: false },
+                                { type: 'WIRE', symbol: '', powered: false },
+                                { type: 'OUT', symbol: 'Y0', powered: false }
+                            ]
+                        }
+                    ];
+                    this.renderLadder();
+                    this.showToast('已创建新工程', 'success');
+                }
+            }
+
+            exportProject() {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.rungs, null, 2));
+                const dlAnchor = document.createElement('a');
+                dlAnchor.setAttribute("href", dataStr);
+                dlAnchor.setAttribute("download", "station_ladder_project.plc");
+                document.body.appendChild(dlAnchor);
+                dlAnchor.click();
+                dlAnchor.remove();
+                this.showToast('工程文件导出成功', 'success');
+            }
+
+            triggerImport() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.plc,.json';
+                input.onchange = e => {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = event => {
+                        try {
+                            const parsed = JSON.parse(event.target.result);
+                            if (Array.isArray(parsed)) {
+                                this.rungs = parsed;
+                                this.renderLadder();
+                                this.showToast('工程文件导入成功', 'success');
+                            }
+                        } catch (err) {
+                            this.showToast('文件解析失败，格式不正确', 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+                input.click();
+            }
+
+            clearLadder() {
+                if (confirm('确定清空所有梯形图网络吗？')) {
+                    this.rungs.forEach(r => r.nodes.forEach(n => { n.type = 'WIRE'; n.symbol = ''; n.powered = false; }));
+                    this.renderLadder();
+                    this.showToast('画板已清空', 'info');
+                }
+            }
+
+            zoomIn() {
+                this.zoomLevel = Math.min(this.zoomLevel + 0.1, 1.5);
+                document.getElementById('ladderWorkspace').style.transform = `scale(${this.zoomLevel})`;
+            }
+
+            zoomOut() {
+                this.zoomLevel = Math.max(this.zoomLevel - 0.1, 0.7);
+                document.getElementById('ladderWorkspace').style.transform = `scale(${this.zoomLevel})`;
+            }
+
+            undo() {
+                this.showToast('撤销功能已记录', 'info');
+            }
+
+            redo() {
+                this.showToast('重做功能已记录', 'info');
+            }
+
+            setupKeyboardShortcuts() {
+                window.addEventListener('keydown', (e) => {
+                    if (e.key === 'Delete' || e.key === 'Backspace') {
+                        if (document.activeElement.tagName !== 'INPUT') {
+                            this.deleteSelectedNode();
+                        }
+                    }
+                });
+            }
+
+            showToast(message, type = 'info') {
+                const container = document.getElementById('toastContainer');
+                const toast = document.createElement('div');
+                const colors = {
+                    success: 'bg-emerald-950 border-emerald-700 text-emerald-300',
+                    error: 'bg-rose-950 border-rose-700 text-rose-300',
+                    info: 'bg-industrial-850 border-industrial-700 text-industrial-200'
+                };
+                toast.className = `${colors[type] || colors.info} border px-4 py-2.5 rounded-lg shadow-xl text-xs flex items-center space-x-2 animate-in slide-in-from-bottom-2 duration-200 pointer-events-auto`;
+                
+                const icons = {
+                    success: '<i class="fa-solid fa-circle-check text-emerald-400"></i>',
+                    error: '<i class="fa-solid fa-circle-exclamation text-rose-400"></i>',
+                    info: '<i class="fa-solid fa-circle-info text-blue-400"></i>'
+                };
+
+                toast.innerHTML = `${icons[type] || icons.info} <span>${message}</span>`;
+                container.appendChild(toast);
+
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+        }
+
+        // Initialize App on Window Load
+        let app;
+        window.onload = () => {
+            app = new PLsiEditor();
+        };
+    </script>
+</body>
+</html>
