@@ -22,7 +22,9 @@
   ::-webkit-scrollbar-thumb:active{background:#1f6feb;background-clip:padding-box}
   ::-webkit-scrollbar-corner{background:transparent}
   body{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:13px;display:flex;flex-direction:column;overflow:hidden;padding-bottom:26px}
-  header{background:linear-gradient(180deg,#0f1620,#0a0d12);border-bottom:1px solid var(--line);padding:6px 10px;display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow-x:auto}
+  header{background:linear-gradient(180deg,#0f1620,#0a0d12);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+  .header-row{display:flex;align-items:center;gap:6px;padding:4px 10px;flex-wrap:nowrap;overflow-x:auto}
+  .nav-row{justify-content:center;border-top:1px solid rgba(42,52,66,.5)}
   header .logo{font-weight:700;font-size:15px;color:var(--cyan);letter-spacing:.5px}
   header .logo span{color:var(--orange)}
   header input[type=text]{background:#0d141d;border:1px solid var(--line);color:var(--txt);padding:4px 8px;border-radius:4px;font-size:12px;width:130px}
@@ -102,28 +104,31 @@
 </head>
 <body>
 <header>
-  <div class="logo">PLsi <span>Ladder</span> Web Editor</div>
-  <input type="text" id="progName" value="PROGRAM_1" title="程序名称">
-  <div class="sep"></div>
-  <div class="toolbar">
-    <button id="btnNew" title="新建空程序">新建</button>
-    <button id="btnDemo" title="加载示例程序">示例</button>
-    <button id="btnImport" title="导入 .plsi 或 .json">导入</button>
+  <div class="header-row">
+    <div class="logo">PLsi <span>Ladder</span> Web Editor</div>
+    <input type="text" id="progName" value="PROGRAM_1" title="程序名称">
     <div class="sep"></div>
-    <button id="btnExportBin" class="primary" title="导出固件可加载的 .plsi 二进制">导出 .plsi</button>
-    <button id="btnExportJson" title="导出 JSON">导出 JSON</button>
-    <button id="btnListing" title="生成助记符程序清单">程序清单</button>
-    <div class="sep"></div>
-    <button id="btnRun" class="toggle" title="运行/停止 模拟扫描">▶ 运行</button>
-    <button id="btnStep" title="单步扫描一次">单步</button>
+    <div class="toolbar">
+      <button id="btnNew" title="新建空程序">新建</button>
+      <button id="btnDemo" title="加载示例程序">示例</button>
+      <button id="btnImport" title="导入 .plsi 或 .json">导入</button>
+      <div class="sep"></div>
+      <button id="btnExportBin" class="primary" title="导出固件可加载的 .plsi 二进制">导出 .plsi</button>
+      <button id="btnExportJson" title="导出 JSON">导出 JSON</button>
+      <button id="btnListing" title="生成助记符程序清单">程序清单</button>
+      <div class="sep"></div>
+      <button id="btnRun" class="toggle" title="运行/停止 模拟扫描">▶ 运行</button>
+      <button id="btnStep" title="单步扫描一次">单步</button>
+    </div>
   </div>
-  <div class="sep"></div>
-  <div class="nav">
-    <button id="btnPrevNet">◀ 上</button>
-    <span class="netlabel">网络 <b id="netNum">0</b>/<b id="netTotal">400</b></span>
-    <button id="btnNextNet">下 ▶</button>
-    <button id="btnAddNet" title="在当前网络后插入空网络">+网络</button>
-    <button id="btnDelNet" class="danger" title="删除当前网络">删网络</button>
+  <div class="header-row nav-row">
+    <div class="nav">
+      <button id="btnPrevNet">◀ 上</button>
+      <span class="netlabel">网络 <b id="netNum">0</b>/<b id="netTotal">400</b></span>
+      <button id="btnNextNet">下 ▶</button>
+      <button id="btnAddNet" title="在当前网络后插入空网络">+网络</button>
+      <button id="btnDelNet" class="danger" title="删除当前网络">删网络</button>
+    </div>
   </div>
 </header>
 
